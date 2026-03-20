@@ -12,9 +12,9 @@ async def main():
     
     # Evaluar la hora actual en la máquina de GitHub (UTC)
     hora_actual_utc = datetime.utcnow().hour
-    # Queremos reportes generales completos a las 8:00 AM (13 UTC) y 2:00 PM (19 UTC).
-    # Las demás ejecuciones del día serán en modo "Silencioso" cazando gangas.
-    es_reporte_diario = (hora_actual_utc in [13, 14, 19, 20])
+    # Disparamos los reportes generales a la hora 12 UTC (7:47 AM) y 19 UTC (2:47 PM)
+    # Tolerancia de +1 hora por posibles retrasos de servidor gratuito.
+    es_reporte_diario = (hora_actual_utc in [12, 13, 19, 20])
     
     # 1. Scraping visual por todas las rutas
     resultados = await procesar_rutas()
