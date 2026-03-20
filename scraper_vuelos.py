@@ -3,15 +3,21 @@ import os
 import csv
 import re
 import statistics
-from playwright.async_api import async_playwright
-import csv
-import re
+import datetime
+from datetime import timedelta
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 
-async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
-    url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destino}%20from%20{origen}%20on%20{fecha_inicio}%20through%20{fecha_fin}&hl=es-419"
-    print(f"✈️ Buscando: {origen} ➡️ {destino}")
+async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin, dias_paquete=None):
+    if dias_paquete:
+        d_ini = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d")
+        d_ret = d_ini + timedelta(days=int(dias_paquete))
+        url_ret = d_ret.strftime("%Y-%m-%d")
+        url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destino}%20from%20{origen}%20on%20{fecha_inicio}%20through%20{url_ret}&hl=es-419"
+    else:
+        url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destino}%20from%20{origen}%20on%20{fecha_inicio}%20through%20{fecha_fin}&hl=es-419"
+    
+    print(f"✈️ Buscando: {origen} ➡️ {destino} (Iniciando en {fecha_inicio})")
     
     await page.goto(url, wait_until="networkidle")
     await page.wait_for_timeout(3000)
@@ -93,6 +99,18 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
         
     return None
 
+def format_date(date_str, fallback_day):
+    date_str = date_str.replace("/", "-")
+    parts = date_str.split("-")
+    if len(parts) == 2:
+        return f"{parts[0]}-{parts[1]}-{fallback_day}"
+    elif len(parts) == 3:
+        if len(parts[0]) == 4:
+            return date_str
+        elif len(parts[2]) == 4:
+            return f"{parts[2]}-{parts[1]}-{parts[0]}"
+    return None
+
 async def procesar_rutas():
     resultados = []
     rutas = []
@@ -108,32 +126,35 @@ async def procesar_rutas():
         response.raise_for_status()
         
         texto_csv = response.text
-        print(f"DEBUG - CSV Content (primeros 100 caracteres): {texto_csv[:100]}")
-        
         f = StringIO(texto_csv)
         reader = csv.DictReader(f)
         headers = reader.fieldnames
         print(f"DEBUG - Headers encontrados: {headers}")
         
         for row in reader:
-            # Buscar flexibilidad en los headers (mayúsculas o minúsculas)
             origen = row.get("ORIGEN", row.get("Origen", "")).strip()
             destino = row.get("DESTINO", row.get("Destino", "")).strip()
-            mes_inicio = row.get("MES DE INICIO", row.get("Mes_Inicio", "")).strip()
-            mes_fin = row.get("MES DE FIN", row.get("Mes_Fin", "")).strip()
+            mes_inicio_raw = row.get("MES DE INICIO", row.get("Mes_Inicio", "")).strip()
+            mes_fin_raw = row.get("MES DE FIN", row.get("Mes_Fin", "")).strip()
             
-            # Nuevo campo opcional PRECIO ALERTA
             str_alerta = row.get("PRECIO ALERTA", row.get("Precio_Alerta", "999999")).strip()
             precio_alerta = int(str_alerta) if str_alerta.isdigit() else 999999
             
-            if origen and destino and mes_inicio and mes_fin:
-                rutas.append({
-                    "origen": origen,
-                    "destino": destino,
-                    "inicio": f"{mes_inicio}-01", 
-                    "fin": f"{mes_fin}-28",
-                    "alerta": precio_alerta
-                })
+            dias_paq_raw = row.get("Dias_del_Paquete", "").strip()
+            dias_paquete = int(dias_paq_raw) if dias_paq_raw.isdigit() else None
+            
+            if origen and destino and mes_inicio_raw and mes_fin_raw:
+                f_ini = format_date(mes_inicio_raw, "01")
+                f_fin = format_date(mes_fin_raw, "28")
+                if f_ini and f_fin:
+                    rutas.append({
+                        "origen": origen,
+                        "destino": destino,
+                        "inicio": f_ini, 
+                        "fin": f_fin,
+                        "alerta": precio_alerta,
+                        "dias_paquete": dias_paquete
+                    })
     except Exception as e:
         print(f"❌ Error leyendo Google Sheets: {e}")
         return []
@@ -145,7 +166,7 @@ async def procesar_rutas():
         page = await context.new_page()
         
         for r in rutas:
-            res = await extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"])
+            res = await extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"], r["dias_paquete"])
             if res:
                 resultados.append({
                     "ruta": f"{r['origen']} ➡️ {r['destino']}",
