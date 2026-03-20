@@ -30,6 +30,10 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
     elementos = soup.find_all(lambda tag: tag.has_attr('aria-label'))
     precios_validos = []
     
+    # Aseguramos que tengan guiones por si el usuario usó / en Excel
+    fecha_inicio = fecha_inicio.replace("/", "-")
+    fecha_fin = fecha_fin.replace("/", "-")
+    
     meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     m_ini = int(fecha_inicio.split("-")[1])
     y_ini = fecha_inicio.split("-")[0]
