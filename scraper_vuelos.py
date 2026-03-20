@@ -2,6 +2,10 @@ import asyncio
 import os
 import csv
 import re
+import statistics
+from playwright.async_api import async_playwright
+import csv
+import re
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 
@@ -65,12 +69,22 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
                     pass
                     
     if precios_validos:
+        # Extraemos solo los números para la matemática
+        solo_precios = [p[0] for p in precios_validos]
+        mediana = statistics.median(solo_precios) if solo_precios else 0
+        
         precios_validos.sort(key=lambda x: x[0])
         mejor = precios_validos[0]
+        
+        # Consideramos GANGA matemática si es al menos un 20% más barato que el precio normal del mes
+        es_ganga_matematica = (mejor[0] <= (mediana * 0.8))
+        
         return {
             "precio": mejor[0],
             "detalle": mejor[1],
-            "url": url
+            "url": url,
+            "mediana": int(mediana),
+            "es_ganga_mat": es_ganga_matematica
         }
         
     return None
@@ -104,12 +118,17 @@ async def procesar_rutas():
             mes_inicio = row.get("MES DE INICIO", row.get("Mes_Inicio", "")).strip()
             mes_fin = row.get("MES DE FIN", row.get("Mes_Fin", "")).strip()
             
+            # Nuevo campo opcional PRECIO ALERTA
+            str_alerta = row.get("PRECIO ALERTA", row.get("Precio_Alerta", "999999")).strip()
+            precio_alerta = int(str_alerta) if str_alerta.isdigit() else 999999
+            
             if origen and destino and mes_inicio and mes_fin:
                 rutas.append({
                     "origen": origen,
                     "destino": destino,
                     "inicio": f"{mes_inicio}-01", 
-                    "fin": f"{mes_fin}-28" 
+                    "fin": f"{mes_fin}-28",
+                    "alerta": precio_alerta
                 })
     except Exception as e:
         print(f"❌ Error leyendo Google Sheets: {e}")
@@ -128,9 +147,12 @@ async def procesar_rutas():
                     "ruta": f"{r['origen']} ➡️ {r['destino']}",
                     "precio": res['precio'],
                     "detalle": res['detalle'],
-                    "url": res['url']
+                    "url": res['url'],
+                    "alerta_manual": r['alerta'],
+                    "mediana": res['mediana'],
+                    "es_ganga_mat": res['es_ganga_mat']
                 })
-                print(f"  ✅ Encontrado: ${res['precio']} ({res['detalle'][:40]}...)")
+                print(f"  ✅ Encontrado: ${res['precio']} (Mediana: ${res['mediana']}) - {res['detalle'][:40]}")
             else:
                 print(f"  ❌ Sin fechas encontradas.")
                 

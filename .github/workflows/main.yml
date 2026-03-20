@@ -2,9 +2,8 @@ name: Daily Flight Tracker
 
 on:
   schedule:
-    # Corre todos los días a las 08:00 AM UTC (que es 3:00 AM en Ecuador/Panamá/Colombia)
-    # Cambia esto por '0 13 * * *' para que corra a las 08:00 AM hora local (UTC-5)
-    - cron: '50 19 * * *'
+    # 6 consultas al día en horario hábil (UTC=13,15,17,19,21,23 que equivale a 8,10,12,14,16,18 locales)
+    - cron: '0 13,15,17,19,21,23 * * *'
   workflow_dispatch:
     # Permite ejecutarlo a mano desde la página web de GitHub
 
