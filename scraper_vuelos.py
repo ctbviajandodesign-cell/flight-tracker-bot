@@ -137,8 +137,8 @@ async def procesar_rutas():
             mes_inicio_raw = row.get("MES DE INICIO", row.get("Mes_Inicio", "")).strip()
             mes_fin_raw = row.get("MES DE FIN", row.get("Mes_Fin", "")).strip()
             
-            str_alerta = row.get("PRECIO ALERTA", row.get("Precio_Alerta", "999999")).strip()
-            precio_alerta = int(str_alerta) if str_alerta.isdigit() else 999999
+            str_alerta = row.get("PRECIO ALERTA", row.get("Precio_Alerta", "0")).strip()
+            precio_alerta = int(str_alerta) if str_alerta.isdigit() else 0
             
             dias_paq_raw = row.get("Dias_del_Paquete", "").strip()
             dias_paquete = int(dias_paq_raw) if dias_paq_raw.isdigit() else None
