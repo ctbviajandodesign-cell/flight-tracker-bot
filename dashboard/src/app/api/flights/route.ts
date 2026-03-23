@@ -13,11 +13,9 @@ const getDoc = async () => {
   if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
     // Modo Vercel (Hosting)
     email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    // Vercel a veces añade comillas o codifica mal los saltos de linea
-    key = process.env.GOOGLE_PRIVATE_KEY
-      .replace(/\\n/g, '\n')
-      .replace(/^"|"$/g, '')
-      .trim(); 
+    // La llave se configura como BASE64 en Vercel para evitar problemas de formato y comillas invisibles.
+    const base64Key = process.env.GOOGLE_PRIVATE_KEY || '';
+    key = Buffer.from(base64Key, 'base64').toString('utf8'); 
   } else {
     // Modo Local (Tu Computadora)
     const credsPath = path.join(process.cwd(), '../credentials.json');
