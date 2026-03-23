@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
+export const dynamic = 'force-dynamic';
 import { JWT } from 'google-auth-library';
 import path from 'path';
 import fs from 'fs';
