@@ -2,18 +2,18 @@ name: Daily Flight Tracker
 
 on:
   schedule:
-    # ✈️ REPORTE GENERAL MAÑANA: Arranca 7:47 AM para llegar exacto ~8:00 AM (A tu Telegram)
-    - cron: '47 12 * * *'
-    # 🕵️ Silencioso: 10:17 AM
-    - cron: '17 15 * * *'
-    # 🕵️ Silencioso: 12:17 PM
-    - cron: '17 17 * * *'
-    # ✈️ REPORTE GENERAL TARDE: Arranca 2:47 PM para llegar exacto ~3:00 PM
-    - cron: '47 19 * * *'
-    # 🕵️ Silencioso: 4:17 PM
-    - cron: '17 21 * * *'
-    # 🕵️ Silencioso Final: 6:17 PM
-    - cron: '17 23 * * *'
+    # ✈️ REPORTE GENERAL MAÑANA: Cron 7:00 AM UTC → llega ~8:00 AM Colombia
+    - cron: '0 12 * * *'
+    # 🕵️ Silencioso: 9:00 AM Colombia
+    - cron: '0 14 * * *'
+    # 🕵️ Silencioso: 11:00 AM Colombia
+    - cron: '0 16 * * *'
+    # ✈️ REPORTE GENERAL TARDE: Cron 1:00 PM UTC → llega ~2:00 PM Colombia
+    - cron: '0 18 * * *'
+    # 🕵️ Silencioso: 3:00 PM Colombia
+    - cron: '0 20 * * *'
+    # 🕵️ Silencioso Final: 5:00 PM Colombia
+    - cron: '0 22 * * *'
   workflow_dispatch:
     # Permite ejecutarlo a mano desde la página web de GitHub
 
