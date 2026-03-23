@@ -13,7 +13,11 @@ const getDoc = async () => {
   if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
     // Modo Vercel (Hosting)
     email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    key = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'); 
+    // Vercel a veces añade comillas o codifica mal los saltos de linea
+    key = process.env.GOOGLE_PRIVATE_KEY
+      .replace(/\\n/g, '\n')
+      .replace(/^"|"$/g, '')
+      .trim(); 
   } else {
     // Modo Local (Tu Computadora)
     const credsPath = path.join(process.cwd(), '../credentials.json');
