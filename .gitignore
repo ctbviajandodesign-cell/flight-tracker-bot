@@ -4,3 +4,4 @@ __pycache__/
 *.html
 *.png
 .pytest_cache/
+credentials.json
