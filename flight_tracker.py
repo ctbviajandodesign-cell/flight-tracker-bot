@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from notifier import enviar_notificacion_telegram
 from scraper_vuelos import procesar_rutas
 
-# Cargar variables de entorno desde el archivo .env
 load_dotenv()
 
 async def main():
@@ -36,10 +35,12 @@ async def main():
             else:
                 mensaje_telegram += f"📍 <b>{r['ruta']}</b>\n"
             
-            # Mostrar los 3 mejores precios
+            # Mostrar los 3 mejores precios con info de Directo/Escala
             for i, opcion in enumerate(r['mejores']):
-                emoji = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
-                mensaje_telegram += f"   {emoji} <b>${opcion['precio']} USD</b> - {opcion['detalle']}\n"
+                emoji_medalla = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+                # Usar DIR: 🚀 o ESC: 🛬 según el tipo detectado
+                emoji_vuelo = "DIR: 🚀" if opcion['tipo'] == "DIR" else "ESC: 🛬"
+                mensaje_telegram += f"   {emoji_medalla} <b>${opcion['precio']} USD</b> - {opcion['detalle']} ({emoji_vuelo})\n"
             
             mensaje_telegram += f"   📊 Promedio Normal: ${r['mediana']} USD\n"
             mensaje_telegram += f"   🔗 <a href='{r['url']}'>Ver Google Flights</a>\n\n"
@@ -57,8 +58,9 @@ async def main():
                 
                 # Mostrar los 3 mejores precios incluso en alerta de ganga
                 for i, opcion in enumerate(r['mejores']):
-                    emoji = "🔥" if i == 0 else "🥈" if i == 1 else "🥉"
-                    mensaje_telegram += f"   {emoji} <b>${opcion['precio']} USD</b> - {opcion['detalle']}\n"
+                    emoji_medalla = "🔥" if i == 0 else "🥈" if i == 1 else "🥉"
+                    emoji_vuelo = "DIR: 🚀" if opcion['tipo'] == "DIR" else "ESC: 🛬"
+                    mensaje_telegram += f"   {emoji_medalla} <b>${opcion['precio']} USD</b> - {opcion['detalle']} ({emoji_vuelo})\n"
                 
                 mensaje_telegram += f"   📊 Normalmente cuesta: ${r['mediana']} USD\n"
                 mensaje_telegram += f"   🔗 <a href='{r['url']}'>¡Reserva rápido aquí!</a>\n\n"
