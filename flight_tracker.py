@@ -51,7 +51,7 @@ async def main():
         # Modo Cazador de Gangas Silencioso
         if vuelos_ganga:
             mensaje_telegram = f"🚨 <b>¡ALERTA DE PRECIOS BAJOS!</b> 🚨\n"
-            mensaje_telegram += f"<i>Una ganga ahora ahora mismo:</i>\n\n"
+            mensaje_telegram += f"<i>El radar detectó un desplome matemático en este vuelo ahora mismo:</i>\n\n"
             for r in vuelos_ganga:
                 mensaje_telegram += f"📍 <b>{r['ruta']}</b>\n"
                 
