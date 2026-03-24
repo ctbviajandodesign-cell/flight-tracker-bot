@@ -40,15 +40,15 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin, di
     fecha_inicio = fecha_inicio.replace("/", "-")
     fecha_fin = fecha_fin.replace("/", "-")
     
-    meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     m_ini = int(fecha_inicio.split("-")[1])
     y_ini = fecha_inicio.split("-")[0]
     m_fin = int(fecha_fin.split("-")[1])
     y_fin = fecha_fin.split("-")[0]
     
-    meses_recorrido = [f"{meses_nombres[m_ini-1]} {y_ini}"]
+    # Guardamos los meses como tuplas (mes, año) para facilitar el formato numérico
+    meses_recorrido = [(m_ini, y_ini)]
     if m_ini != m_fin or y_ini != y_fin:
-        meses_recorrido.append(f"{meses_nombres[m_fin-1]} {y_fin}")
+        meses_recorrido.append((m_fin, y_fin))
         
     mes_actual_idx = 0
     prev_dia = -1
@@ -71,8 +71,10 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin, di
                                 mes_actual_idx += 1
                             prev_dia = dia
                             
-                            str_mes = meses_recorrido[mes_actual_idx]
-                            precios_validos.append((precio, f"Vuelo el {dia} de {str_mes}"))
+                            m_actual, y_actual = meses_recorrido[mes_actual_idx]
+                            # Formato: DD/MM/YY (ej: 15/03/26)
+                            fecha_corta = f"{dia:02d}/{int(m_actual):02d}/{str(y_actual)[2:]}"
+                            precios_validos.append((precio, fecha_corta))
                         else:
                             precios_validos.append((precio, "Día no determinado"))
                 except Exception as ex:
