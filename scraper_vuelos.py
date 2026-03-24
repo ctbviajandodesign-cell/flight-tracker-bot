@@ -84,14 +84,15 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin, di
         mediana = statistics.median(solo_precios) if solo_precios else 0
         
         precios_validos.sort(key=lambda x: x[0])
-        mejor = precios_validos[0]
+        mejores_3 = precios_validos[:3] # Obtiene hasta los 3 más baratos
         
         # Consideramos GANGA matemática si es al menos un 20% más barato que el precio normal del mes
-        es_ganga_matematica = (mejor[0] <= (mediana * 0.8))
+        es_ganga_matematica = (mejores_3[0][0] <= (mediana * 0.8))
         
         return {
-            "precio": mejor[0],
-            "detalle": mejor[1],
+            "mejores": [{"precio": p[0], "detalle": p[1]} for p in mejores_3],
+            "precio": mejores_3[0][0],   # Mantenemos el principal para no romper el resto del código
+            "detalle": mejores_3[0][1],
             "url": url,
             "mediana": int(mediana),
             "es_ganga_mat": es_ganga_matematica
@@ -170,6 +171,7 @@ async def procesar_rutas():
             if res:
                 resultados.append({
                     "ruta": f"{r['origen']} ➡️ {r['destino']}",
+                    "mejores": res['mejores'],
                     "precio": res['precio'],
                     "detalle": res['detalle'],
                     "url": res['url'],
