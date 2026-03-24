@@ -35,8 +35,13 @@ async def main():
                 mensaje_telegram += f"🚨 <b>¡GANGA! {r['ruta']}</b>\n"
             else:
                 mensaje_telegram += f"📍 <b>{r['ruta']}</b>\n"
-            mensaje_telegram += f"   💵 <b>${r['precio']} USD</b> (Promedio Normal: ${r['mediana']} USD)\n"
-            mensaje_telegram += f"   📅 {r['detalle']}\n"
+            
+            # Mostrar los 3 mejores precios
+            for i, opcion in enumerate(r['mejores']):
+                emoji = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+                mensaje_telegram += f"   {emoji} <b>${opcion['precio']} USD</b> - {opcion['detalle']}\n"
+            
+            mensaje_telegram += f"   📊 Promedio Normal: ${r['mediana']} USD\n"
             mensaje_telegram += f"   🔗 <a href='{r['url']}'>Ver Google Flights</a>\n\n"
             
         print("\n📩 Enviando Reporte Diario Total a Telegram...")
@@ -49,8 +54,13 @@ async def main():
             mensaje_telegram += f"<i>El radar detectó un desplome matemático en este vuelo ahora mismo:</i>\n\n"
             for r in vuelos_ganga:
                 mensaje_telegram += f"📍 <b>{r['ruta']}</b>\n"
-                mensaje_telegram += f"   🔥 <b>${r['precio']} USD</b> (Normalmente cuesta: ${r['mediana']} USD)\n"
-                mensaje_telegram += f"   📅 {r['detalle']}\n"
+                
+                # Mostrar los 3 mejores precios incluso en alerta de ganga
+                for i, opcion in enumerate(r['mejores']):
+                    emoji = "🔥" if i == 0 else "🥈" if i == 1 else "🥉"
+                    mensaje_telegram += f"   {emoji} <b>${opcion['precio']} USD</b> - {opcion['detalle']}\n"
+                
+                mensaje_telegram += f"   📊 Normalmente cuesta: ${r['mediana']} USD\n"
                 mensaje_telegram += f"   🔗 <a href='{r['url']}'>¡Reserva rápido aquí!</a>\n\n"
                 
             print("\n📩 ¡Enviando ALERTA DE GANGA a Telegram!")
