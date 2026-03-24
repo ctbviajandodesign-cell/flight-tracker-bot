@@ -57,8 +57,13 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin, di
                 try:
                     precio = int(float(txt_precio))
                     if precio > 10: 
-                        es_directo = ("sin escalas" in label or "directo" in label)
-                        tipo_vuelo = "DIR" if es_directo else "ESC"
+                        # DETECCIÓN MEJORADA DE TIPO DE VUELO
+                        if any(x in label for x in ["sin escalas", "directo", "nonstop", "non-stop"]):
+                            tipo_vuelo = "DIR"
+                        elif any(x in label for x in ["escala", "parada", "stop"]):
+                            tipo_vuelo = "ESC"
+                        else:
+                            tipo_vuelo = "INFO_NO_DISP" # Google no lo dice en el calendario para este día
                         
                         parent_text = e.parent.get_text(separator=' ', strip=True) if e.parent else ""
                         match_day = re.search(r'^(\d+)', parent_text)
@@ -73,7 +78,6 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin, di
                             fecha_corta = f"{dia:02d}/{int(m_actual):02d}/{str(y_actual)[2:]}"
                             precios_validos.append((precio, fecha_corta, tipo_vuelo))
                         else:
-                            # Cambio de "Día no determinado" a "N/F"
                             precios_validos.append((precio, "N/F", tipo_vuelo))
                 except Exception as ex:
                     pass
@@ -113,12 +117,11 @@ async def procesar_rutas():
         f = StringIO(response.text)
         reader = csv.DictReader(f)
         for row in reader:
-            origen = row.get("ORIGEN", row.get("Origen", "")).strip()
-            destino = row.get("DESTINO", row.get("Destino", "")).strip()
-            mes_ini = row.get("MES DE INICIO", row.get("Mes_Inicio", "")).strip()
-            mes_fin = row.get("MES DE FIN", row.get("Mes_Fin", "")).strip()
-            str_alerta = row.get("PRECIO ALERTA", row.get("Precio_Alerta", "0")).strip()
-            alerta = int(str_alerta) if str_alerta.isdigit() else 0
+            origen = row.get("ORIGEN", "").strip()
+            destino = row.get("DESTINO", "").strip()
+            mes_ini = row.get("MES DE INICIO", "").strip()
+            mes_fin = row.get("MES DE FIN", "").strip()
+            alerta = int(row.get("PRECIO ALERTA", "0"))
             paquete = row.get("Dias_del_Paquete", "").strip()
             paquete = int(paquete) if paquete.isdigit() else None
             if origen and destino:
