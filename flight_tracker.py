@@ -18,7 +18,10 @@ async def main():
         print("No se obtuvieron resultados.")
         return
 
-    vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
+    vuelos_ganga = [
+        r for r in resultados
+        if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']
+    ]
 
     if vuelos_ganga:
         titulo = "🚨 <b>PRECIOS MÁS BAJOS AHORA!</b> 🚨\n"
@@ -41,12 +44,13 @@ async def main():
         for i, opc in enumerate(r['mejores']):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
 
+            # LÓGICA DE ICONOS: Solo se muestran si se detectan
             if opc['tipo'] == "DIR":
                 info_vuelo = "(DIR: 🚀)"
             elif opc['tipo'] == "ESC":
                 info_vuelo = "(ESC: 🛬)"
             else:
-                info_vuelo = "🟡"
+                info_vuelo = ""  # Quitamos el círculo amarillo
 
             mensaje_telegram += f"   {medal} <b>${opc['precio']} USD</b> - {opc['detalle']} {info_vuelo}\n"
 
