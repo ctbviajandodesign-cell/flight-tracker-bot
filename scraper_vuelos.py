@@ -20,13 +20,10 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin, di
     print(f"✈️ Buscando: {origen} ➡️ {destino} (Iniciando en {fecha_inicio})")
 
     await page.goto(url, wait_until="networkidle")
-    # Espera extra para asegurar que carguen los precios e iconos
     await page.wait_for_timeout(5000)
 
     try:
-        # Abrimos el calendario para forzar la carga de la cuadrícula de precios
         await page.get_by_placeholder("Salida").first.click()
-        # Tiempo crítico para que aparezcan las etiquetas aria-label con escalas
         await page.wait_for_timeout(4000)
     except Exception:
         print("  ❌ No se pudo abrir el calendario.")
@@ -103,7 +100,6 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin, di
 def format_date(date_str, fallback_day):
     date_str = date_str.replace("/", "-")
     parts = date_str.split("-")
-
     if len(parts) == 2:
         return f"{parts[0]}-{parts[1]}-{fallback_day}"
     elif len(parts) == 3:
@@ -111,11 +107,9 @@ def format_date(date_str, fallback_day):
             return date_str
         elif len(parts[2]) == 4:
             return f"{parts[2]}-{parts[1]}-{parts[0]}"
-
     return None
 
 async def procesar_una_ruta(browser, r, semaphore):
-    """Procesa una sola ruta de forma independiente con un semáforo."""
     async with semaphore:
         context = await browser.new_context()
         page = await context.new_page()
@@ -138,7 +132,6 @@ async def procesar_una_ruta(browser, r, semaphore):
         return None
 
 async def procesar_rutas():
-    resultados = []
     rutas_pendientes = []
 
     try:
@@ -172,6 +165,7 @@ async def procesar_rutas():
                     "alerta": alerta,
                     "dias_paquete": paquete
                 })
+
     except Exception as e:
         print(f"❌ Error cargando rutas: {e}")
         return []
@@ -179,18 +173,13 @@ async def procesar_rutas():
     if not rutas_pendientes:
         return []
 
-    # Paralelismo con límite de 4 ventanas
     semaphore = asyncio.Semaphore(4)
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        
-        # Lanzamos todas las rutas en paralelo
         tasks = [procesar_una_ruta(browser, r, semaphore) for r in rutas_pendientes]
         respuestas = await asyncio.gather(*tasks)
-        
-        # Filtramos los resultados exitosos
         resultados = [r for r in respuestas if r is not None]
-        
         await browser.close()
 
     return resultados
