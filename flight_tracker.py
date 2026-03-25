@@ -1,10 +1,51 @@
 import asyncio
+import os
+import httpx
 from datetime import datetime
 from dotenv import load_dotenv
 from notifier import enviar_notificacion_telegram
 from scraper_vuelos import procesar_rutas
 
 load_dotenv()
+
+async def guardar_en_supabase(resultados):
+    """Guarda los resultados en la tabla vuelos_historial de Supabase."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    
+    if not url or not key:
+        print("⚠️ Supabase no configurado (falta URL o KEY). Saltando guardado.")
+        return
+
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    }
+
+    datos_a_guardar = []
+    for r in resultados:
+        # Preparamos la fila para la base de datos
+        datos_a_guardar.append({
+            "ruta": r['ruta'],
+            "precio": r['precio'],
+            "es_ganga": (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']),
+            "tipo_vuelo": r['mejores'][0]['tipo'] if r['mejores'] else "UNK"
+        })
+
+    if not datos_a_guardar:
+        return
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"{url}/rest/v1/vuelos_historial", json=datos_a_guardar, headers=headers)
+            if response.status_code in [200, 201]:
+                print(f"✅ Historial guardado en Supabase ({len(datos_a_guardar)} filas).")
+            else:
+                print(f"❌ Error al guardar en Supabase: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"❌ Fallo crítico al conectar con Supabase: {e}")
 
 async def main():
     print("🚀 Iniciando rastreo inteligente...")
@@ -17,6 +58,9 @@ async def main():
     if not resultados:
         print("No se obtuvieron resultados.")
         return
+
+    # GUARDADO EN HISTORIAL: Intentamos guardar todo lo que encontramos
+    await guardar_en_supabase(resultados)
 
     vuelos_ganga = [
         r for r in resultados
