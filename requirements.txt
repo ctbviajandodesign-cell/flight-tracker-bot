@@ -3,3 +3,4 @@ python-dotenv
 playwright
 pandas
 beautifulsoup4
+httpx
