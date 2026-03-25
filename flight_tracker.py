@@ -11,7 +11,7 @@ async def main():
     hora_utc = datetime.utcnow().hour
 
     # Reportes programados (Ecuador: 8am, 3pm, 9pm)
-    es_reporte_diario = (hora_utc in [12, 13, 19, 20, 1, 2])
+    es_reporte_diario = (hora_utc in [12, 19, 1])
 
     resultados = await procesar_rutas()
     if not resultados:
