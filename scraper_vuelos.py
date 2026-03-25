@@ -20,11 +20,14 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin, di
     print(f"✈️ Buscando: {origen} ➡️ {destino} (Iniciando en {fecha_inicio})")
 
     await page.goto(url, wait_until="networkidle")
-    await page.wait_for_timeout(3000)
+    # Espera extra para asegurar que carguen los precios e iconos
+    await page.wait_for_timeout(5000)
 
     try:
+        # Abrimos el calendario para forzar la carga de la cuadrícula de precios
         await page.get_by_placeholder("Salida").first.click()
-        await page.wait_for_timeout(3000)
+        # Tiempo crítico para que aparezcan las etiquetas aria-label con escalas
+        await page.wait_for_timeout(4000)
     except Exception:
         print("  ❌ No se pudo abrir el calendario.")
         return None
@@ -111,15 +114,41 @@ def format_date(date_str, fallback_day):
 
     return None
 
+async def procesar_una_ruta(browser, r, semaphore):
+    """Procesa una sola ruta de forma independiente con un semáforo."""
+    async with semaphore:
+        context = await browser.new_context()
+        page = await context.new_page()
+        try:
+            res = await extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"], r["dias_paquete"])
+            await context.close()
+            if res:
+                return {
+                    "ruta": f"{r['origen']} ➡️ {r['destino']}",
+                    "mejores": res['mejores'],
+                    "precio": res['precio'],
+                    "url": res['url'],
+                    "alerta_manual": r['alerta'],
+                    "mediana": res['mediana'],
+                    "es_ganga_mat": res['es_ganga_mat']
+                }
+        except Exception as e:
+            print(f"❌ Error procesando {r['origen']}->{r['destino']}: {e}")
+            await context.close()
+        return None
+
 async def procesar_rutas():
     resultados = []
-    rutas = []
+    rutas_pendientes = []
 
     try:
         import requests
         from io import StringIO
 
-        url_csv = os.getenv("GOOGLE_SHEETS_URL", "https://docs.google.com/spreadsheets/d/e/.../pub?output=csv")
+        url_csv = os.getenv("GOOGLE_SHEETS_URL", "")
+        if not url_csv:
+            return []
+
         response = requests.get(url_csv)
         f = StringIO(response.text)
         reader = csv.DictReader(f)
@@ -135,7 +164,7 @@ async def procesar_rutas():
             paquete = int(paquete) if paquete.isdigit() else None
 
             if origen and destino:
-                rutas.append({
+                rutas_pendientes.append({
                     "origen": origen,
                     "destino": destino,
                     "inicio": format_date(mes_ini, "01"),
@@ -143,28 +172,25 @@ async def procesar_rutas():
                     "alerta": alerta,
                     "dias_paquete": paquete
                 })
-
-    except:
+    except Exception as e:
+        print(f"❌ Error cargando rutas: {e}")
         return []
 
+    if not rutas_pendientes:
+        return []
+
+    # Paralelismo con límite de 4 ventanas
+    semaphore = asyncio.Semaphore(4)
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context()
-        page = await context.new_page()
-
-        for r in rutas:
-            res = await extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"], r["dias_paquete"])
-            if res:
-                resultados.append({
-                    "ruta": f"{r['origen']} ➡️ {r['destino']}",
-                    "mejores": res['mejores'],
-                    "precio": res['precio'],
-                    "url": res['url'],
-                    "alerta_manual": r['alerta'],
-                    "mediana": res['mediana'],
-                    "es_ganga_mat": res['es_ganga_mat']
-                })
-
+        
+        # Lanzamos todas las rutas en paralelo
+        tasks = [procesar_una_ruta(browser, r, semaphore) for r in rutas_pendientes]
+        respuestas = await asyncio.gather(*tasks)
+        
+        # Filtramos los resultados exitosos
+        resultados = [r for r in respuestas if r is not None]
+        
         await browser.close()
 
     return resultados
