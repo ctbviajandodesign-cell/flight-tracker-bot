@@ -1,44 +1,110 @@
-name: Daily Flight Tracker
+import asyncio
+import os
+import httpx
+from datetime import datetime
+from dotenv import load_dotenv
+from notifier import enviar_notificacion_telegram
+from scraper_vuelos import procesar_rutas
 
-on:
-  schedule:
-    # 🌅 REPORTE GENERAL 8 AM (Inicia 7:48 AM COL)
-    - cron: '48 12 * * *'
-    # 🕵️ GANGA MAÑANA 11 AM (Inicia 10:53 AM COL)
-    - cron: '53 15 * * *'
-    # 🌅 REPORTE GENERAL 3 PM (Inicia 2:47 PM COL)
-    - cron: '47 19 * * *'
-    # 🕵️ GANGA TARDE 5 PM (Inicia 4:54 PM COL)
-    - cron: '54 21 * * *'
-    # 🌅 REPORTE GENERAL 9 PM (Inicia 8:48 PM COL)
-    - cron: '48 01 * * *'
-    # 🕵️ GANGA NOCHE 11 PM (Inicia 10:55 PM COL)
-    - cron: '55 03 * * *'
-  workflow_dispatch:
-    # Permite ejecutarlo a mano desde la página web de GitHub
+load_dotenv()
 
-jobs:
-  track-flights:
-    runs-on: ubuntu-latest
+async def guardar_en_supabase(resultados):
+    """Guarda los resultados en la tabla vuelos_historial de Supabase."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    
+    if not url or not key:
+        print("⚠️ Supabase no configurado (falta URL o KEY). Saltando guardado.")
+        return
 
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    }
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+    datos_a_guardar = []
+    for r in resultados:
+        datos_a_guardar.append({
+            "ruta": r['ruta'],
+            "precio": r['precio'],
+            "es_ganga": (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']),
+            "tipo_vuelo": r['mejores'][0]['tipo'] if r['mejores'] else "UNK"
+        })
 
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        playwright install chromium
+    if not datos_a_guardar:
+        return
 
-    - name: Run Flight Tracker
-      env:
-        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        GOOGLE_SHEETS_URL: ${{ secrets.GOOGLE_SHEETS_URL }}
-      run: python flight_tracker.py
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{url}/rest/v1/vuelos_historial",
+                json=datos_a_guardar,
+                headers=headers
+            )
+            if response.status_code in [200, 201]:
+                print(f"✅ Historial guardado en Supabase ({len(datos_a_guardar)} filas).")
+            else:
+                print(f"❌ Error al guardar en Supabase: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"❌ Fallo crítico al conectar con Supabase: {e}")
+
+async def main():
+    print("🚀 Iniciando rastreo inteligente...")
+    hora_utc = datetime.utcnow().hour
+
+    # Reportes programados (Ecuador: 8am, 3pm, 9pm)
+    es_reporte_diario = (hora_utc in [12, 19, 1])
+
+    resultados = await procesar_rutas()
+    if not resultados:
+        print("No se obtuvieron resultados.")
+        return
+
+    # GUARDADO EN HISTORIAL
+    await guardar_en_supabase(resultados)
+
+    vuelos_ganga = [
+        r for r in resultados
+        if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']
+    ]
+
+    if vuelos_ganga:
+        titulo = "🚨 <b>PRECIOS MÁS BAJOS AHORA!</b> 🚨\n"
+        frase_intro = "<i>Precios más bajos detectados en este momento:</i>\n\n"
+        vuelos_a_mostrar = resultados if es_reporte_diario else vuelos_ganga
+    elif es_reporte_diario:
+        titulo = "🌅 <b>REPORTE DIARIO DE VUELOS</b>\n"
+        frase_intro = "<i>Resumen general de todas tus rutas de hoy:</i>\n\n"
+        vuelos_a_mostrar = resultados
+    else:
+        return
+
+    mensaje_telegram = titulo + frase_intro
+
+    for r in vuelos_a_mostrar:
+        es_ganga = (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat'])
+        icono = "🚨" if es_ganga else "📍"
+        mensaje_telegram += f"{icono} <b>{r['ruta']}</b>\n"
+
+        for i, opc in enumerate(r['mejores']):
+            medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+
+            if opc['tipo'] == "DIR":
+                info_vuelo = "(DIR: 🚀)"
+            elif opc['tipo'] == "ESC":
+                info_vuelo = "(ESC: 🛬)"
+            else:
+                info_vuelo = ""
+
+            mensaje_telegram += f"   {medal} <b>${opc['precio']} USD</b> - {opc['detalle']} {info_vuelo}\n"
+
+        url_limpia = r['url'].replace("&", "&amp;")
+        mensaje_telegram += f"   📊 Promedio Normal: ${r['mediana']} USD\n"
+        mensaje_telegram += f"   🔗 <a href='{url_limpia}'>Ver en Google Flights</a>\n\n"
+
+    enviar_notificacion_telegram(mensaje_telegram)
+
+if __name__ == "__main__":
+    asyncio.run(main())
