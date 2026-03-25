@@ -4,60 +4,56 @@ from dotenv import load_dotenv
 from notifier import enviar_notificacion_telegram
 from scraper_vuelos import procesar_rutas
 
-# Cargar variables de entorno desde el archivo .env
 load_dotenv()
 
 async def main():
-    print("🚀 Iniciando rastreo de vuelos programados...")
-    
-    # Evaluar la hora actual en la máquina de GitHub (UTC)
-    hora_actual_utc = datetime.utcnow().hour
-    # Disparamos los reportes generales a la hora 12 UTC (7:47 AM) y 19 UTC (2:47 PM)
-    # Tolerancia amplia por posibles retrasos de servidor gratuito de GitHub.
-    es_reporte_diario = (hora_actual_utc in [12, 13, 14, 18, 19, 20])
-    
-    # 1. Scraping visual por todas las rutas
+    print("🚀 Iniciando rastreo inteligente...")
+    hora_utc = datetime.utcnow().hour
+
+    # Reportes programados (Ecuador: 8am, 3pm, 9pm)
+    es_reporte_diario = (hora_utc in [12, 13, 19, 20, 1, 2])
+
     resultados = await procesar_rutas()
-    
     if not resultados:
-        print("No se obtuvieron resultados de ninguna ruta.")
+        print("No se obtuvieron resultados.")
         return
-        
-    # Un vuelo es ganga si baja de tu Precio de Alerta (manual) O si es un 20% más barato que el promedio del mes entero
+
     vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
-    
-    if es_reporte_diario:
-        mensaje_telegram = f"🌅 <b>REPORTE DIARIO DE VUELOS</b>\n"
-        mensaje_telegram += f"<i>Resumen general de todas tus rutas de hoy:</i>\n\n"
-        for r in resultados:
-            es_ganga = (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat'])
-            if es_ganga:
-                mensaje_telegram += f"🚨 <b>¡GANGA! {r['ruta']}</b>\n"
-            else:
-                mensaje_telegram += f"📍 <b>{r['ruta']}</b>\n"
-            mensaje_telegram += f"   💵 <b>${r['precio']} USD</b> (Promedio Normal: ${r['mediana']} USD)\n"
-            mensaje_telegram += f"   📅 {r['detalle']}\n"
-            mensaje_telegram += f"   🔗 <a href='{r['url']}'>Ver Google Flights</a>\n\n"
-            
-        print("\n📩 Enviando Reporte Diario Total a Telegram...")
-        enviar_notificacion_telegram(mensaje_telegram)
-        
+
+    if vuelos_ganga:
+        titulo = "🚨 <b>PRECIOS MÁS BAJOS AHORA!</b> 🚨\n"
+        frase_intro = "<i>Precios más bajos detectados en este momento:</i>\n\n"
+        vuelos_a_mostrar = resultados if es_reporte_diario else vuelos_ganga
+    elif es_reporte_diario:
+        titulo = "🌅 <b>REPORTE DIARIO DE VUELOS</b>\n"
+        frase_intro = "<i>Resumen general de todas tus rutas de hoy:</i>\n\n"
+        vuelos_a_mostrar = resultados
     else:
-        # Modo Cazador de Gangas Silencioso
-        if vuelos_ganga:
-            mensaje_telegram = f"🚨 <b>¡ALERTA DE PRECIOS BAJOS!</b> 🚨\n"
-            mensaje_telegram += f"<i>El radar detectó un desplome matemático en este vuelo ahora mismo:</i>\n\n"
-            for r in vuelos_ganga:
-                mensaje_telegram += f"📍 <b>{r['ruta']}</b>\n"
-                mensaje_telegram += f"   🔥 <b>${r['precio']} USD</b> (Normalmente cuesta: ${r['mediana']} USD)\n"
-                mensaje_telegram += f"   📅 {r['detalle']}\n"
-                mensaje_telegram += f"   🔗 <a href='{r['url']}'>¡Reserva rápido aquí!</a>\n\n"
-                
-            print("\n📩 ¡Enviando ALERTA DE GANGA a Telegram!")
-            enviar_notificacion_telegram(mensaje_telegram)
-        else:
-            print(f"\n🤫 Monitoreo silencioso a las {hora_actual_utc}:00 UTC.")
-            print("Ningún vuelo presentó un descuento agresivo hoy. Se queda callado.")
+        return
+
+    mensaje_telegram = titulo + frase_intro
+
+    for r in vuelos_a_mostrar:
+        es_ganga = (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat'])
+        icono = "🚨" if es_ganga else "📍"
+        mensaje_telegram += f"{icono} <b>{r['ruta']}</b>\n"
+
+        for i, opc in enumerate(r['mejores']):
+            medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+
+            if opc['tipo'] == "DIR":
+                info_vuelo = "(DIR: 🚀)"
+            elif opc['tipo'] == "ESC":
+                info_vuelo = "(ESC: 🛬)"
+            else:
+                info_vuelo = "🟡"
+
+            mensaje_telegram += f"   {medal} <b>${opc['precio']} USD</b> - {opc['detalle']} {info_vuelo}\n"
+
+        mensaje_telegram += f"   📊 Promedio Normal: ${r['mediana']} USD\n"
+        mensaje_telegram += f"   🔗 <a href='{r['url']}'>Ver en Google Flights</a>\n\n"
+
+    enviar_notificacion_telegram(mensaje_telegram)
 
 if __name__ == "__main__":
     asyncio.run(main())
