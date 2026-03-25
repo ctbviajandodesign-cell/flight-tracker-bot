@@ -4,18 +4,16 @@ on:
   schedule:
     # 🌅 REPORTE GENERAL 8 AM (Inicia 7:48 AM COL)
     - cron: '48 12 * * *'
-    # 🕵️ GANGA 10 AM (Inicia 9:52 AM COL)
-    - cron: '52 14 * * *'
-    # 🕵️ GANGA 12 PM (Inicia 11:49 AM COL)
-    - cron: '49 16 * * *'
+    # 🕵️ GANGA MAÑANA 11 AM (Inicia 10:53 AM COL)
+    - cron: '53 15 * * *'
     # 🌅 REPORTE GENERAL 3 PM (Inicia 2:47 PM COL)
     - cron: '47 19 * * *'
-    # 🕵️ GANGA 4 PM (Inicia 3:53 PM COL)
-    - cron: '53 20 * * *'
-    # 🕵️ GANGA 6 PM (Inicia 5:46 PM COL)
-    - cron: '46 22 * * *'
+    # 🕵️ GANGA TARDE 5 PM (Inicia 4:54 PM COL)
+    - cron: '54 21 * * *'
     # 🌅 REPORTE GENERAL 9 PM (Inicia 8:48 PM COL)
     - cron: '48 01 * * *'
+    # 🕵️ GANGA NOCHE 11 PM (Inicia 10:55 PM COL)
+    - cron: '55 03 * * *'
   workflow_dispatch:
     # Permite ejecutarlo a mano desde la página web de GitHub
 
