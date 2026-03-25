@@ -1,39 +1,63 @@
 import asyncio
-from playwright.async_api import async_playwright
-from bs4 import BeautifulSoup
+from datetime import datetime
+from dotenv import load_dotenv
+from notifier import enviar_notificacion_telegram
+from scraper_vuelos import procesar_rutas
 
-async def run():
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        url = "https://www.google.com/travel/flights?q=Flights%20to%20PTY%20from%20GYE%20on%202026-06-01%20through%202026-07-31&hl=es-419"
-        await page.goto(url)
-        await page.wait_for_timeout(4000)
+# Cargar variables de entorno desde el archivo .env
+load_dotenv()
+
+async def main():
+    print("🚀 Iniciando rastreo de vuelos programados...")
+    
+    # Evaluar la hora actual en la máquina de GitHub (UTC)
+    hora_actual_utc = datetime.utcnow().hour
+    # Disparamos los reportes generales a la hora 12 UTC (7:47 AM) y 19 UTC (2:47 PM)
+    # Tolerancia amplia por posibles retrasos de servidor gratuito de GitHub.
+    es_reporte_diario = (hora_actual_utc in [12, 13, 14, 18, 19, 20])
+    
+    # 1. Scraping visual por todas las rutas
+    resultados = await procesar_rutas()
+    
+    if not resultados:
+        print("No se obtuvieron resultados de ninguna ruta.")
+        return
         
-        await page.get_by_placeholder("Salida").first.click()
-        await page.wait_for_timeout(3000)
-        
-        html = await page.content()
-        soup = BeautifulSoup(html, 'html.parser')
-        
-        elements = soup.find_all(lambda tag: tag.has_attr('aria-label') and tag.get('role') == 'button')
-        if not elements:
-            elements = soup.find_all(lambda tag: tag.has_attr('aria-label'))
+    # Un vuelo es ganga si baja de tu Precio de Alerta (manual) O si es un 20% más barato que el promedio del mes entero
+    vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
+    
+    if es_reporte_diario:
+        mensaje_telegram = f"🌅 <b>REPORTE DIARIO DE VUELOS</b>\n"
+        mensaje_telegram += f"<i>Resumen general de todas tus rutas de hoy:</i>\n\n"
+        for r in resultados:
+            es_ganga = (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat'])
+            if es_ganga:
+                mensaje_telegram += f"🚨 <b>¡GANGA! {r['ruta']}</b>\n"
+            else:
+                mensaje_telegram += f"📍 <b>{r['ruta']}</b>\n"
+            mensaje_telegram += f"   💵 <b>${r['precio']} USD</b> (Promedio Normal: ${r['mediana']} USD)\n"
+            mensaje_telegram += f"   📅 {r['detalle']}\n"
+            mensaje_telegram += f"   🔗 <a href='{r['url']}'>Ver Google Flights</a>\n\n"
             
-        count = 0
-        for e in elements:
-            label = e.get('aria-label', '').lower()
-            if 'dólar' in label or 'usd' in label:
-                print(f"\n--- ELEMENTO {count} ---")
-                print(f"Item attrs: {e.attrs}")
-                if e.parent:
-                    print(f"Parent attrs: {e.parent.attrs}")
-                    if e.parent.parent:
-                        print(f"Grandparent attrs: {e.parent.parent.attrs}")
-                count += 1
-                if count > 2: break
+        print("\n📩 Enviando Reporte Diario Total a Telegram...")
+        enviar_notificacion_telegram(mensaje_telegram)
+        
+    else:
+        # Modo Cazador de Gangas Silencioso
+        if vuelos_ganga:
+            mensaje_telegram = f"🚨 <b>¡ALERTA DE PRECIOS BAJOS!</b> 🚨\n"
+            mensaje_telegram += f"<i>El radar detectó un desplome matemático en este vuelo ahora mismo:</i>\n\n"
+            for r in vuelos_ganga:
+                mensaje_telegram += f"📍 <b>{r['ruta']}</b>\n"
+                mensaje_telegram += f"   🔥 <b>${r['precio']} USD</b> (Normalmente cuesta: ${r['mediana']} USD)\n"
+                mensaje_telegram += f"   📅 {r['detalle']}\n"
+                mensaje_telegram += f"   🔗 <a href='{r['url']}'>¡Reserva rápido aquí!</a>\n\n"
                 
-        await browser.close()
+            print("\n📩 ¡Enviando ALERTA DE GANGA a Telegram!")
+            enviar_notificacion_telegram(mensaje_telegram)
+        else:
+            print(f"\n🤫 Monitoreo silencioso a las {hora_actual_utc}:00 UTC.")
+            print("Ningún vuelo presentó un descuento agresivo hoy. Se queda callado.")
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    asyncio.run(main())
