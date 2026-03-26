@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTheme } from 'next-themes';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -21,18 +21,55 @@ const IATA_MAP: Record<string, string> = {
 const getCityName = (code: string) => IATA_MAP[code.toUpperCase()] || "Internacional";
 
 type PrecioData = {
-  id: number;
-  ruta: string;
-  precio: number;
-  mediana: number;
-  fecha_vuelo: string;
-  precio_alerta: number;
-  es_ganga: boolean;
-  tipo_vuelo: string;
-  fecha: string;
+  id: number; ruta: string; precio: number; mediana: number;
+  fecha_vuelo: string; precio_alerta: number; es_ganga: boolean;
+  tipo_vuelo: string; fecha: string; url_vuelo?: string;
 };
-
 type HistorialEntry = { fecha: string; precio: number; es_ganga: boolean };
+
+function FreshnessIndicator({ fecha }: { fecha: string }) {
+  const diffHrs = (Date.now() - new Date(fecha).getTime()) / 36e5 - 5;
+  const fresh = diffHrs < 4;
+  const stale = diffHrs > 12;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+      fresh ? 'bg-emerald-500/15 text-emerald-500' :
+      stale ? 'bg-rose-500/15 text-rose-500' :
+      'bg-amber-500/15 text-amber-500'
+    }`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${fresh ? 'bg-emerald-500' : stale ? 'bg-rose-500' : 'bg-amber-500'}`}/>
+      {new Date(new Date(fecha).getTime() - 5*3600000).toLocaleString('es-EC', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+    </span>
+  );
+}
+
+function MiniChart({ data }: { data: HistorialEntry[] }) {
+  if (data.length < 2) return null;
+  const prices = data.map(d => d.precio);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const range = max - min || 1;
+  const w = 200, h = 40, pad = 4;
+  const pts = data.slice(-15).map((d, i, arr) => {
+    const x = pad + (i / (arr.length - 1)) * (w - pad * 2);
+    const y = h - pad - ((d.precio - min) / range) * (h - pad * 2);
+    return `${x},${y}`;
+  }).join(' ');
+  const last = data[data.length - 1];
+  const prev = data[data.length - 2];
+  const trend = last.precio < prev.precio ? 'down' : last.precio > prev.precio ? 'up' : 'flat';
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="flex-shrink-0">
+        <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.5"
+          className={trend === 'down' ? 'text-emerald-400' : trend === 'up' ? 'text-rose-400' : 'text-slate-400'}
+          strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      <span className={`text-xs font-bold ${trend === 'down' ? 'text-emerald-400' : trend === 'up' ? 'text-rose-400' : 'text-slate-400'}`}>
+        {trend === 'down' ? '↓ bajando' : trend === 'up' ? '↑ subiendo' : '→ estable'}
+      </span>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const [rutas, setRutas] = useState<any[]>([]);
@@ -44,288 +81,228 @@ export default function Dashboard() {
   const [vistaActiva, setVistaActiva] = useState<'tarjetas' | 'comparativa'>('tarjetas');
   const [rutaDetalle, setRutaDetalle] = useState<string | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [nuevoVuelo, setNuevoVuelo] = useState({ origen: '', destino: '', ida: '', vuelta: '', alerta: '', dias_paquete: '' });
-  const [tipoFecha, setTipoFecha] = useState<'mes' | 'exacta'>('mes');
+  const [nuevoVuelo, setNuevoVuelo] = useState({ origen:'', destino:'', ida:'', vuelta:'', alerta:'', dias_paquete:'' });
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   const cargarRutas = async () => {
     try {
       setCargando(true);
-      const [resRutas, resPrecios] = await Promise.all([
-        fetch('/api/flights'),
-        fetch('/api/prices'),
-      ]);
+      const [resRutas, resPrecios] = await Promise.all([fetch('/api/flights'), fetch('/api/prices')]);
       const dataRutas = await resRutas.json();
       const dataPrecios = await resPrecios.json();
-
       if (dataRutas.success) setRutas(dataRutas.flights);
       if (dataPrecios.success) {
-        const mapaPrecios: Record<string, PrecioData> = {};
+        const mapa: Record<string, PrecioData> = {};
         for (const p of dataPrecios.precios) {
-          const clave = p.ruta.replace(' ➡️ ', ' -> ').replace('➡️', '->').trim();
-          mapaPrecios[clave] = p;
+          const k = p.ruta.replace(' ➡️ ', ' -> ').replace('➡️', '->').trim();
+          mapa[k] = p;
         }
-        setPrecios(mapaPrecios);
+        setPrecios(mapa);
         setHistorial(dataPrecios.historial || {});
       }
       setErrorSync('');
-    } catch (e: any) {
-      setErrorSync(e.message);
-    } finally {
-      setCargando(false);
-    }
+    } catch (e: any) { setErrorSync(e.message); }
+    finally { setCargando(false); }
   };
 
   useEffect(() => { setMounted(true); cargarRutas(); }, []);
 
-  const getPrecioRuta = (origen: string, destino: string): PrecioData | null => {
-    const clave1 = `${origen} -> ${destino}`;
-    const clave2 = `${origen} ➡️ ${destino}`;
-    return precios[clave1] || precios[clave2] || null;
-  };
+  const getPrecio = (o: string, d: string): PrecioData | null =>
+    precios[`${o} -> ${d}`] || precios[`${o} ➡️ ${d}`] || null;
 
   const eliminarRuta = async (id: number) => {
-    try {
-      setRutas(rutas.filter(r => r.id !== id));
-      await fetch(`/api/flights?id=${id}`, { method: 'DELETE' });
-      cargarRutas();
-    } catch (e: any) {
-      setErrorSync('Error eliminando: ' + e.message);
-      cargarRutas();
-    }
+    setRutas(rutas.filter(r => r.id !== id));
+    await fetch(`/api/flights?id=${id}`, { method: 'DELETE' });
+    cargarRutas();
   };
 
   const agregarRuta = async (e: React.FormEvent) => {
     e.preventDefault();
-    const tempId = Date.now();
-    const nuevaRuta = {
-      id: tempId, ...nuevoVuelo,
-      alerta: nuevoVuelo.alerta ? Number(nuevoVuelo.alerta) : '',
-      dias_paquete: nuevoVuelo.dias_paquete ? Number(nuevoVuelo.dias_paquete) : ''
-    };
-    setRutas([...rutas, nuevaRuta]);
+    const nueva = { id: Date.now(), ...nuevoVuelo, alerta: nuevoVuelo.alerta ? Number(nuevoVuelo.alerta) : '', dias_paquete: nuevoVuelo.dias_paquete ? Number(nuevoVuelo.dias_paquete) : '' };
+    setRutas([...rutas, nueva]);
     setMostrarFormulario(false);
-    setNuevoVuelo({ origen: '', destino: '', ida: '', vuelta: '', alerta: '', dias_paquete: '' });
-    try {
-      await fetch('/api/flights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevaRuta) });
-      cargarRutas();
-    } catch (e: any) {
-      setErrorSync('Error agregando: ' + e.message);
-      cargarRutas();
-    }
+    setNuevoVuelo({ origen:'', destino:'', ida:'', vuelta:'', alerta:'', dias_paquete:'' });
+    await fetch('/api/flights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nueva) });
+    cargarRutas();
   };
 
-  const parseDateString = (dateStr: string, tipo: 'mes' | 'exacta') => {
-    if (!dateStr) return null;
-    const parts = dateStr.split('-');
-    if (parts.length === 2) return new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
-    if (parts.length === 3) return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    return null;
+  const parseFecha = (s: string) => {
+    if (!s) return null;
+    const p = s.split('-');
+    return p.length === 2 ? new Date(+p[0], +p[1]-1, 1) : p.length === 3 ? new Date(+p[0], +p[1]-1, +p[2]) : null;
   };
+  const fmtFecha = (d: Date | null, tipo: string) => !d ? '' : tipo === 'mes' ? format(d, 'yyyy-MM') : format(d, 'yyyy-MM-dd');
 
-  const formatDateObj = (date: Date | null, tipo: 'mes' | 'exacta') => {
-    if (!date) return '';
-    return tipo === 'mes' ? format(date, 'yyyy-MM') : format(date, 'yyyy-MM-dd');
-  };
-
-  const rutasPorDestino = rutas.reduce((acc: Record<string, any[]>, ruta) => {
-    if (!acc[ruta.destino]) acc[ruta.destino] = [];
-    acc[ruta.destino].push(ruta);
-    return acc;
-  }, {});
-
-  const rutasFiltradas = rutas.filter(ruta => {
-    const term = filtro.toLowerCase();
-    return ruta.origen.toLowerCase().includes(term) ||
-      ruta.destino.toLowerCase().includes(term) ||
-      getCityName(ruta.origen).toLowerCase().includes(term) ||
-      getCityName(ruta.destino).toLowerCase().includes(term);
-  });
-
-  const totalGangas = rutas.filter(r => getPrecioRuta(r.origen, r.destino)?.es_ganga).length;
+  const rutasPorDestino = rutas.reduce((acc: Record<string,any[]>, r) => { (acc[r.destino] = acc[r.destino]||[]).push(r); return acc; }, {});
+  const rutasFiltradas = rutas.filter(r => { const t = filtro.toLowerCase(); return r.origen.toLowerCase().includes(t) || r.destino.toLowerCase().includes(t) || getCityName(r.origen).toLowerCase().includes(t) || getCityName(r.destino).toLowerCase().includes(t); });
+  const totalGangas = rutas.filter(r => getPrecio(r.origen, r.destino)?.es_ganga).length;
+  const ultimaActualizacion = Object.values(precios)[0]?.fecha;
 
   return (
-    <div className="min-h-screen bg-background text-on-background relative overflow-hidden font-sans transition-colors duration-300 pb-20">
-      <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-secondary/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-background text-on-background font-sans pb-24 relative">
 
-      <div className="max-w-5xl mx-auto p-8 relative z-10 pt-16">
+      {/* Fondo sutil */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-primary/8 rounded-full blur-3xl"/>
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-tertiary/6 rounded-full blur-3xl"/>
+      </div>
 
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-outline-variant/20 pb-6 gap-6">
-          <div>
-            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-primary to-primary-container bg-clip-text text-transparent mb-2">
-              Monitor de Vuelos CTB
-            </h1>
-            <p className="text-on-surface-variant text-sm">
-              {rutas.length} rutas monitoreadas
-              {totalGangas > 0 && (
-                <span className="ml-2 bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full text-xs font-bold">
-                  🚨 {totalGangas} gangas activas
-                </span>
-              )}
-            </p>
-            {Object.values(precios).length > 0 && (
-              <p className="text-on-surface-variant text-xs mt-1">
-                🕐 Última actualización: {new Date(new Date(Object.values(precios)[0].fecha).getTime() - 5 * 60 * 60 * 1000).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </p>
-            )}
-            {errorSync && <p className="text-error mt-2 text-xs font-bold bg-error/10 p-2 rounded">{errorSync}</p>}
-          </div>
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            {mounted && (
-              <div className="flex bg-surface-container-low border border-outline-variant/20 rounded-xl p-1 shadow-sm">
-                <button onClick={() => setTheme('light')} className={`p-2 rounded-lg flex items-center justify-center transition ${theme === 'light' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                  <span className="material-symbols-outlined text-[20px]">light_mode</span>
-                </button>
-                <button onClick={() => setTheme('dark')} className={`p-2 rounded-lg flex items-center justify-center transition ${theme === 'dark' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                  <span className="material-symbols-outlined text-[20px]">dark_mode</span>
-                </button>
-                <button onClick={() => setTheme('system')} className={`p-2 rounded-lg flex items-center justify-center transition ${theme === 'system' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                  <span className="material-symbols-outlined text-[20px]">desktop_windows</span>
-                </button>
+      <div className="max-w-6xl mx-auto px-6 pt-10 relative z-10">
+
+        {/* ── HEADER ── */}
+        <header className="mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <span className="material-symbols-outlined text-primary text-3xl">travel_explore</span>
+                <h1 className="text-3xl font-black tracking-tight text-on-background">Monitor de Vuelos <span className="text-primary">CTB</span></h1>
               </div>
-            )}
-            <button
-              onClick={() => setMostrarFormulario(!mostrarFormulario)}
-              className="bg-primary text-surface-container-lowest px-6 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(143,245,255,0.2)] hover:brightness-110 flex items-center gap-2 transition whitespace-nowrap">
-              <span className="material-symbols-outlined font-bold text-xl">{mostrarFormulario ? "close" : "add"}</span>
-              {mostrarFormulario ? "Cancelar" : "Agregar Ruta"}
-            </button>
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                <span className="text-on-surface-variant text-sm">{rutas.length} rutas activas</span>
+                {totalGangas > 0 && (
+                  <span className="inline-flex items-center gap-1.5 bg-amber-500/15 text-amber-500 border border-amber-500/20 text-xs font-bold px-3 py-1 rounded-full">
+                    🔥 {totalGangas} gangas detectadas
+                  </span>
+                )}
+                {ultimaActualizacion && <FreshnessIndicator fecha={ultimaActualizacion}/>}
+              </div>
+              {errorSync && <p className="text-rose-400 mt-2 text-xs bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20">{errorSync}</p>}
+            </div>
+            <div className="flex items-center gap-3">
+              {mounted && (
+                <div className="flex bg-surface-container-low border border-outline-variant/20 rounded-xl p-1">
+                  {(['light','dark','system'] as const).map(t => (
+                    <button key={t} onClick={() => setTheme(t)} title={t}
+                      className={`p-2 rounded-lg transition ${theme===t ? 'bg-primary/15 text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                      <span className="material-symbols-outlined text-[18px]">
+                        {t==='light' ? 'light_mode' : t==='dark' ? 'dark_mode' : 'desktop_windows'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setMostrarFormulario(!mostrarFormulario)}
+                className="flex items-center gap-2 bg-primary text-white font-bold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition shadow-lg shadow-primary/20">
+                <span className="material-symbols-outlined text-[18px]">{mostrarFormulario ? 'close' : 'add'}</span>
+                {mostrarFormulario ? 'Cancelar' : 'Nueva Ruta'}
+              </button>
+            </div>
           </div>
         </header>
 
-        <div className="flex gap-2 mb-6">
-          <button onClick={() => setVistaActiva('tarjetas')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition ${vistaActiva === 'tarjetas' ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'}`}>
-            📋 Todas las rutas
-          </button>
-          <button onClick={() => setVistaActiva('comparativa')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition ${vistaActiva === 'comparativa' ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'}`}>
-            ⚖️ GYE vs UIO
-          </button>
-          <button onClick={cargarRutas} className="ml-auto px-4 py-2 rounded-lg text-sm font-bold bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition flex items-center gap-1">
-            <span className="material-symbols-outlined text-[16px]">refresh</span> Actualizar
-          </button>
+        {/* ── FORMULARIO ── */}
+        {mostrarFormulario && (
+          <div className="mb-8 bg-surface-container-low border border-outline-variant/20 rounded-2xl p-6 shadow-xl">
+            <h2 className="text-base font-bold text-primary flex items-center gap-2 mb-5">
+              <span className="material-symbols-outlined text-[20px]">flight_takeoff</span>Agregar nueva ruta de monitoreo
+            </h2>
+            <form onSubmit={agregarRuta}>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[{label:'Origen',key:'origen',ph:'GYE'},{label:'Destino',key:'destino',ph:'MAD'}].map(f=>(
+                  <div key={f.key}>
+                    <label className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1.5">{f.label}</label>
+                    <input required value={(nuevoVuelo as any)[f.key]}
+                      onChange={e=>setNuevoVuelo({...nuevoVuelo,[f.key]:e.target.value.toUpperCase()})}
+                      maxLength={3} placeholder={f.ph}
+                      className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2.5 text-sm font-bold uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 h-[42px]"/>
+                  </div>
+                ))}
+                {(['ida','vuelta'] as const).map(k=>(
+                  <div key={k}>
+                    <label className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1.5">{k==='ida'?'Mes ida':'Mes vuelta'}</label>
+                    <DatePicker selected={parseFecha((nuevoVuelo as any)[k])}
+                      onChange={(d:Date|null)=>setNuevoVuelo({...nuevoVuelo,[k]:fmtFecha(d,'mes')})}
+                      dateFormat="MM/yyyy" showMonthYearPicker locale={es} wrapperClassName="w-full"
+                      placeholderText="MM/YYYY"
+                      className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-primary h-[42px]"/>
+                  </div>
+                ))}
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1.5">Días viaje</label>
+                  <input value={nuevoVuelo.dias_paquete} onChange={e=>setNuevoVuelo({...nuevoVuelo,dias_paquete:e.target.value})}
+                    type="number" placeholder="6"
+                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-primary h-[42px]"/>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1.5">Alerta $</label>
+                  <input value={nuevoVuelo.alerta} onChange={e=>setNuevoVuelo({...nuevoVuelo,alerta:e.target.value})}
+                    type="number" placeholder="350"
+                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-primary h-[42px]"/>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button type="submit" className="flex items-center gap-2 bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition">
+                  <span className="material-symbols-outlined text-[18px]">save</span>Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ── NAVEGACIÓN ── */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex gap-1 bg-surface-container-low border border-outline-variant/20 rounded-xl p-1">
+            <button onClick={()=>setVistaActiva('tarjetas')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${vistaActiva==='tarjetas' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+              ✈️ Todas las rutas
+            </button>
+            <button onClick={()=>setVistaActiva('comparativa')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${vistaActiva==='comparativa' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+              ⚖️ GYE vs UIO
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            {vistaActiva==='tarjetas' && (
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                <input type="text" placeholder="Buscar destino..." value={filtro} onChange={e=>setFiltro(e.target.value)}
+                  className="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 pl-9 pr-4 text-sm outline-none focus:border-primary w-48 transition-all focus:w-64"/>
+              </div>
+            )}
+            <button onClick={cargarRutas} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:text-on-surface text-sm font-medium transition">
+              <span className="material-symbols-outlined text-[16px]">refresh</span>
+            </button>
+          </div>
         </div>
 
-        {!mostrarFormulario && vistaActiva === 'tarjetas' && rutas.length > 0 && (
-          <div className="mb-6 relative max-w-md">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-            <input type="text" placeholder="Buscar por código o ciudad..." value={filtro}
-              onChange={e => setFiltro(e.target.value)}
-              className="w-full bg-surface-container-low text-on-surface border border-outline-variant/20 rounded-full py-3 pl-12 pr-4 outline-none focus:border-primary shadow-sm transition-all text-sm font-medium" />
-            {filtro && (
-              <button onClick={() => setFiltro('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
-                <span className="material-symbols-outlined text-[18px]">close</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {mostrarFormulario && (
-          <form onSubmit={agregarRuta} className="bg-surface-container-low border border-outline-variant/10 p-6 rounded-2xl mb-10 shadow-xl animate-in fade-in slide-in-from-top-4">
-            <h2 className="text-xl font-bold text-primary flex items-center gap-2 mb-6">
-              <span className="material-symbols-outlined">flight_takeoff</span>Nueva ruta
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-              <div className="flex flex-col">
-                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Origen</label>
-                <input required value={nuevoVuelo.origen}
-                  onChange={e => setNuevoVuelo({ ...nuevoVuelo, origen: e.target.value.toUpperCase() })}
-                  maxLength={3} placeholder="GYE"
-                  className="bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary uppercase h-[46px]" />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Destino</label>
-                <input required value={nuevoVuelo.destino}
-                  onChange={e => setNuevoVuelo({ ...nuevoVuelo, destino: e.target.value.toUpperCase() })}
-                  maxLength={3} placeholder="MAD"
-                  className="bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary uppercase h-[46px]" />
-              </div>
-              <div className="flex flex-col relative">
-                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Mes Ida</label>
-                <DatePicker
-                  selected={parseDateString(nuevoVuelo.ida, tipoFecha)}
-                  onChange={(d: Date | null) => setNuevoVuelo({ ...nuevoVuelo, ida: formatDateObj(d, tipoFecha) })}
-                  dateFormat="MM/yyyy" showMonthYearPicker locale={es} wrapperClassName="w-full"
-                  placeholderText="Mes / Año"
-                  className="w-full bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary h-[46px]" />
-              </div>
-              <div className="flex flex-col relative">
-                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Mes Vuelta</label>
-                <DatePicker
-                  selected={parseDateString(nuevoVuelo.vuelta, tipoFecha)}
-                  onChange={(d: Date | null) => setNuevoVuelo({ ...nuevoVuelo, vuelta: formatDateObj(d, tipoFecha) })}
-                  dateFormat="MM/yyyy" showMonthYearPicker locale={es} wrapperClassName="w-full"
-                  placeholderText="Mes / Año"
-                  className="w-full bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary h-[46px]" />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Días Viaje</label>
-                <input value={nuevoVuelo.dias_paquete}
-                  onChange={e => setNuevoVuelo({ ...nuevoVuelo, dias_paquete: e.target.value })}
-                  type="number" placeholder="Ej: 6"
-                  className="bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary h-[46px]" />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Alerta $</label>
-                <input value={nuevoVuelo.alerta}
-                  onChange={e => setNuevoVuelo({ ...nuevoVuelo, alerta: e.target.value })}
-                  type="number" placeholder="Opcional"
-                  className="bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary h-[46px]" />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end">
-              <button type="submit" className="bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold px-8 py-3 rounded-lg hover:brightness-110 flex items-center gap-2 transition shadow-md">
-                <span className="material-symbols-outlined">save</span>Guardar Ruta
-              </button>
-            </div>
-          </form>
-        )}
-
+        {/* ── CONTENIDO ── */}
         {cargando ? (
-          <div className="text-center py-20 bg-surface-container-low rounded-2xl border border-outline-variant/10">
-            <span className="material-symbols-outlined text-6xl text-primary animate-pulse mb-4">cloud_sync</span>
-            <p className="text-primary text-lg font-bold">Cargando precios en tiempo real...</p>
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="w-12 h-12 border-2 border-primary/30 border-t-primary rounded-full animate-spin"/>
+            <p className="text-on-surface-variant text-sm">Cargando precios en tiempo real...</p>
           </div>
 
-        ) : vistaActiva === 'comparativa' ? (
-          <div className="space-y-4">
-            {Object.entries(rutasPorDestino).map(([destino, rutasDestino]) => {
-              const rutaGYE = rutasDestino.find((r: any) => r.origen === 'GYE');
-              const rutaUIO = rutasDestino.find((r: any) => r.origen === 'UIO');
-              const precioGYE = rutaGYE ? getPrecioRuta('GYE', destino) : null;
-              const precioUIO = rutaUIO ? getPrecioRuta('UIO', destino) : null;
-              if (!rutaGYE && !rutaUIO) return null;
-              const masBarato = precioGYE && precioUIO ? (precioGYE.precio <= precioUIO.precio ? 'GYE' : 'UIO') : null;
+        ) : vistaActiva==='comparativa' ? (
+          <div className="space-y-3">
+            {Object.entries(rutasPorDestino).map(([dest, rs]) => {
+              const pGYE = getPrecio('GYE', dest), pUIO = getPrecio('UIO', dest);
+              const barato = pGYE && pUIO ? (pGYE.precio <= pUIO.precio ? 'GYE' : 'UIO') : null;
+              const hayGanga = pGYE?.es_ganga || pUIO?.es_ganga;
               return (
-                <div key={destino} className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="material-symbols-outlined text-primary">flight_land</span>
-                    <h3 className="text-lg font-bold">{destino} — {getCityName(destino)}</h3>
-                    {(precioGYE?.es_ganga || precioUIO?.es_ganga) && (
-                      <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full text-xs font-bold">🚨 GANGA</span>
-                    )}
+                <div key={dest} className="bg-surface-container-low border border-outline-variant/15 rounded-2xl overflow-hidden">
+                  <div className={`px-5 py-3 flex items-center justify-between border-b border-outline-variant/10 ${hayGanga ? 'bg-amber-500/5' : ''}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-[18px]">location_on</span>
+                      <span className="font-bold text-sm">{dest}</span>
+                      <span className="text-on-surface-variant text-sm">— {getCityName(dest)}</span>
+                    </div>
+                    {hayGanga && <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">🔥 GANGA</span>}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    {[{ origen: 'GYE', precio: precioGYE }, { origen: 'UIO', precio: precioUIO }].map(({ origen, precio }) => (
-                      <div key={origen} className={`p-4 rounded-xl border ${precio?.es_ganga ? 'border-red-500/40 bg-red-500/5' : masBarato === origen ? 'border-green-500/40 bg-green-500/5' : 'border-outline-variant/10 bg-surface-container'}`}>
-                        <p className="text-xs font-bold text-on-surface-variant uppercase mb-2">{origen} → {destino}</p>
-                        {precio ? (
+                  <div className="grid grid-cols-2 divide-x divide-outline-variant/10">
+                    {[{org:'GYE',p:pGYE},{org:'UIO',p:pUIO}].map(({org,p})=>(
+                      <div key={org} className={`p-4 ${barato===org && p ? 'bg-emerald-500/5' : ''}`}>
+                        <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">{org} → {dest}</p>
+                        {p ? (
                           <>
-                            <p className={`text-2xl font-extrabold ${precio.es_ganga ? 'text-red-400' : masBarato === origen ? 'text-green-400' : 'text-on-background'}`}>
-                              ${precio.precio} <span className="text-sm font-normal text-on-surface-variant">USD</span>
+                            <p className={`text-2xl font-black ${p.es_ganga ? 'text-amber-500' : barato===org ? 'text-emerald-500' : 'text-on-background'}`}>
+                              ${p.precio.toLocaleString()} <span className="text-xs font-normal text-on-surface-variant">USD</span>
                             </p>
-                            {precio.fecha_vuelo && precio.fecha_vuelo !== 'N/D' && (
-                              <p className="text-xs text-on-surface-variant mt-1">📅 {precio.fecha_vuelo}</p>
-                            )}
-                            {precio.mediana > 0 && <p className="text-xs text-on-surface-variant">📊 Prom: ${precio.mediana}</p>}
-                            {masBarato === origen && <p className="text-xs text-green-400 font-bold mt-1">✅ Más barato</p>}
+                            {p.fecha_vuelo && p.fecha_vuelo!=='N/D' && <p className="text-xs text-on-surface-variant mt-1">📅 {p.fecha_vuelo}</p>}
+                            {p.mediana>0 && <p className="text-xs text-on-surface-variant">prom. ${p.mediana}</p>}
+                            {barato===org && <p className="text-xs text-emerald-500 font-bold mt-1">✓ más económico</p>}
                           </>
-                        ) : (
-                          <p className="text-sm text-on-surface-variant">Sin datos aún</p>
-                        )}
+                        ) : <p className="text-xs text-on-surface-variant/50 mt-4">sin datos</p>}
                       </div>
                     ))}
                   </div>
@@ -334,143 +311,149 @@ export default function Dashboard() {
             })}
           </div>
 
-        ) : rutasFiltradas.length === 0 ? (
-          <div className="text-center py-20 bg-surface-container-low rounded-2xl border border-outline-variant/10">
-            <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">search_off</span>
-            <p className="text-on-surface-variant">No se encontraron rutas.</p>
+        ) : rutasFiltradas.length===0 ? (
+          <div className="text-center py-24">
+            <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 block mb-3">search_off</span>
+            <p className="text-on-surface-variant">Sin resultados para "{filtro}"</p>
           </div>
 
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {rutasFiltradas.map(ruta => {
-              const precio = getPrecioRuta(ruta.origen, ruta.destino);
-              const esGanga = precio?.es_ganga || false;
-              const claveHistorial1 = `${ruta.origen} -> ${ruta.destino}`;
-              const claveHistorial2 = `${ruta.origen} ➡️ ${ruta.destino}`;
-              const historialRuta = historial[claveHistorial1] || historial[claveHistorial2] || [];
-              const rutaKey = `${ruta.origen}-${ruta.destino}`;
+              const p = getPrecio(ruta.origen, ruta.destino);
+              const ganga = p?.es_ganga || false;
+              const key = `${ruta.origen}-${ruta.destino}`;
+              const hRuta = historial[`${ruta.origen} -> ${ruta.destino}`] || historial[`${ruta.origen} ➡️ ${ruta.destino}`] || [];
+              const expanded = rutaDetalle === key;
               return (
-                <div key={ruta.id}
-                  className={`border transition-all rounded-2xl p-6 relative group shadow-sm cursor-pointer ${esGanga ? 'bg-red-950/30 border-red-500/40 hover:border-red-500/60' : 'bg-surface-container-low border-outline-variant/10 hover:border-outline-variant/30'}`}
-                  onClick={() => setRutaDetalle(rutaDetalle === rutaKey ? null : rutaKey)}>
+                <div key={ruta.id} onClick={()=>setRutaDetalle(expanded ? null : key)}
+                  className={`relative rounded-2xl border transition-all duration-200 cursor-pointer group overflow-hidden
+                    ${ganga
+                      ? 'border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-surface-container-low hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10'
+                      : 'border-outline-variant/15 bg-surface-container-low hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5'
+                    }`}>
 
-                  {esGanga && (
-                    <div className="absolute -top-3 left-6 bg-red-500 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-full shadow animate-pulse">
-                      🚨 GANGA
-                    </div>
-                  )}
+                  {/* Stripe superior ganga */}
+                  {ganga && <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-orange-400"/>}
 
-                  <button onClick={e => { e.stopPropagation(); eliminarRuta(ruta.id); }}
-                    className="absolute top-6 right-6 text-outline-variant hover:text-error transition opacity-0 group-hover:opacity-100">
-                    <span className="material-symbols-outlined">delete</span>
-                  </button>
-
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${esGanga ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'bg-surface-container-highest border-outline-variant/20 text-primary'}`}>
-                      <span className="material-symbols-outlined font-light text-2xl">flight_takeoff</span>
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold tracking-tight text-on-background flex items-center gap-3">
-                        <div className="flex flex-col items-start leading-none">
-                          <span>{ruta.origen}</span>
-                          <span className="text-[9px] text-on-surface-variant font-medium uppercase tracking-wider mt-1.5">{getCityName(ruta.origen)}</span>
+                  <div className="p-5">
+                    {/* Cabecera ruta */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${ganga ? 'bg-amber-500/15' : 'bg-primary/10'}`}>
+                          <span className={`material-symbols-outlined text-[18px] ${ganga ? 'text-amber-500' : 'text-primary'}`}>flight_takeoff</span>
                         </div>
-                        <span className="text-outline-variant/50 font-light text-xl pb-3">→</span>
-                        <div className="flex flex-col items-start leading-none">
-                          <span>{ruta.destino}</span>
-                          <span className="text-[9px] text-on-surface-variant font-medium uppercase tracking-wider mt-1.5">{getCityName(ruta.destino)}</span>
-                        </div>
-                      </h3>
-                    </div>
-                  </div>
-
-                  {precio ? (
-                    <div className={`p-4 rounded-xl mb-4 ${esGanga ? 'bg-red-500/10 border border-red-500/20' : 'bg-surface-container border border-outline-variant/10'}`}>
-                      <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Mejor precio actual</p>
-                          <p className={`text-3xl font-extrabold ${esGanga ? 'text-red-400' : 'text-primary'}`}>
-                            ${precio.precio} <span className="text-sm font-normal text-on-surface-variant">USD</span>
-                          </p>
-                          {precio.fecha_vuelo && precio.fecha_vuelo !== 'N/D' && (
-                            <p className="text-xs text-on-surface-variant mt-1">📅 Salida: {precio.fecha_vuelo}</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          {precio.mediana > 0 && <p className="text-xs text-on-surface-variant">📊 Prom: ${precio.mediana}</p>}
-                          {precio.precio_alerta > 0 && <p className="text-xs text-on-surface-variant">🎯 Alerta: ${precio.precio_alerta}</p>}
-                          <p className="text-[10px] text-on-surface-variant mt-1">
-                            {new Date(precio.fecha).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-lg tracking-tight">{ruta.origen}</span>
+                            <span className="text-on-surface-variant/40 text-sm">→</span>
+                            <span className="font-black text-lg tracking-tight">{ruta.destino}</span>
+                          </div>
+                          <p className="text-[10px] text-on-surface-variant">{getCityName(ruta.origen)} → {getCityName(ruta.destino)}</p>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-xl mb-4 bg-surface-container border border-outline-variant/10">
-                      <p className="text-xs text-on-surface-variant">⏳ Esperando primera consulta del bot...</p>
-                    </div>
-                  )}
-
-                  {rutaDetalle === rutaKey && historialRuta.length > 1 && (
-                    <div className="mt-2 p-3 bg-surface-container rounded-xl border border-outline-variant/10" onClick={e => e.stopPropagation()}>
-                      <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-3">Historial de precios</p>
-                      <div className="flex items-end gap-1 h-16">
-                        {historialRuta.slice(0, 20).reverse().map((h, i) => {
-                          const maxP = Math.max(...historialRuta.map((x: HistorialEntry) => x.precio));
-                          const minP = Math.min(...historialRuta.map((x: HistorialEntry) => x.precio));
-                          const rango = maxP - minP || 1;
-                          const altura = Math.max(10, Math.round(((h.precio - minP) / rango) * 48) + 8);
-                          return (
-                            <div key={i} className="flex flex-col items-center flex-1 gap-1" title={`$${h.precio}`}>
-                              <div className={`w-full rounded-sm ${h.es_ganga ? 'bg-red-400' : 'bg-primary/60'}`} style={{ height: `${altura}px` }}></div>
-                            </div>
-                          );
-                        })}
+                      <div className="flex items-center gap-2">
+                        {ganga && <span className="text-[9px] font-black text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full tracking-wider">🔥 GANGA</span>}
+                        <button onClick={e=>{e.stopPropagation();eliminarRuta(ruta.id);}}
+                          className="opacity-0 group-hover:opacity-100 text-on-surface-variant/40 hover:text-rose-400 transition p-1 rounded-lg hover:bg-rose-500/10">
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
                       </div>
-                      <p className="text-[10px] text-on-surface-variant mt-2 text-center">
-                        Min: <strong>${Math.min(...historialRuta.map((x: HistorialEntry) => x.precio))}</strong> |
-                        Max: <strong>${Math.max(...historialRuta.map((x: HistorialEntry) => x.precio))}</strong> |
-                        {historialRuta.length} registros
-                      </p>
                     </div>
-                  )}
 
-                  <div className="grid grid-cols-2 gap-4 bg-surface-container p-4 rounded-xl border border-outline-variant/10 relative mt-2">
-                    {ruta.dias_paquete && (
-                      <div className="absolute -top-3 right-4 bg-secondary text-surface-container-lowest text-[10px] uppercase font-bold px-3 py-1 rounded-full shadow-sm">
-                        Paquete {ruta.dias_paquete} Días
+                    {/* Precio */}
+                    {p ? (
+                      <div className={`rounded-xl p-4 mb-3 ${ganga ? 'bg-amber-500/8' : 'bg-surface-container'}`}>
+                        <div className="flex items-end justify-between">
+                          <div>
+                            <p className={`text-[9px] uppercase tracking-widest font-bold mb-1 ${ganga ? 'text-amber-500/70' : 'text-on-surface-variant'}`}>mejor precio</p>
+                            <p className={`text-3xl font-black leading-none ${ganga ? 'text-amber-400' : 'text-primary'}`}>
+                              ${p.precio.toLocaleString()}
+                              <span className="text-xs font-normal text-on-surface-variant ml-1">USD</span>
+                            </p>
+                            {p.fecha_vuelo && p.fecha_vuelo!=='N/D' && (
+                              <p className="text-xs text-on-surface-variant mt-1.5 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[12px]">calendar_today</span>
+                                {p.fecha_vuelo}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            {p.precio_alerta > 0 && (
+                              <p className="text-[10px] text-on-surface-variant">🎯 alerta: ${p.precio_alerta}</p>
+                            )}
+                            {p.mediana > 0 && (
+                              <p className="text-[10px] text-on-surface-variant">📊 prom: ${p.mediana}</p>
+                            )}
+                            <FreshnessIndicator fecha={p.fecha}/>
+                          </div>
+                        </div>
+                        {hRuta.length > 1 && <MiniChart data={hRuta}/>}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl p-4 mb-3 bg-surface-container border border-dashed border-outline-variant/30">
+                        <p className="text-xs text-on-surface-variant/50 text-center">⏳ Esperando consulta del bot...</p>
                       </div>
                     )}
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1 font-bold">Salida / Mes</p>
-                      <p className="font-medium flex items-center gap-1 text-on-surface text-sm">
-                        <span className="material-symbols-outlined text-[16px] text-tertiary">calendar_today</span>{ruta.ida}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1 font-bold">Retorno / Mes</p>
-                      <p className="font-medium flex items-center gap-1 text-on-surface text-sm">
-                        <span className="material-symbols-outlined text-[16px] text-tertiary">calendar_today</span>{ruta.vuelta}
-                      </p>
-                    </div>
-                  </div>
 
-                  {precio && historialRuta.length > 1 && (
-                    <p className="text-[10px] text-on-surface-variant text-center mt-3">
-                      {rutaDetalle === rutaKey ? '▲ Ocultar historial' : '▼ Ver historial de precios'}
-                    </p>
-                  )}
-                  {precio?.url_vuelo && (
-                    <a
-                      href={precio.url_vuelo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="block text-center text-[10px] text-on-surface-variant/50 hover:text-primary mt-2 transition-colors"
-                    >
-                      🔗 Ver en Google Flights
-                    </a>
-                  )}
+                    {/* Fechas paquete */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-surface-container rounded-lg px-3 py-2">
+                        <p className="text-[9px] uppercase tracking-wider text-on-surface-variant font-bold mb-0.5">Salida</p>
+                        <p className="font-semibold text-on-surface">{ruta.ida || '—'}</p>
+                      </div>
+                      <div className="bg-surface-container rounded-lg px-3 py-2">
+                        <p className="text-[9px] uppercase tracking-wider text-on-surface-variant font-bold mb-0.5">Retorno</p>
+                        <p className="font-semibold text-on-surface">{ruta.vuelta || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex gap-1.5">
+                        {ruta.dias_paquete && (
+                          <span className="text-[9px] font-bold text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-full">{ruta.dias_paquete}d paquete</span>
+                        )}
+                        {p?.tipo_vuelo && p.tipo_vuelo!=='N/D' && (
+                          <span className="text-[9px] font-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">
+                            {p.tipo_vuelo==='DIR' ? '✈ directo' : '🛬 escala'}
+                          </span>
+                        )}
+                      </div>
+                      {p?.url_vuelo && (
+                        <a href={p.url_vuelo} target="_blank" rel="noopener noreferrer"
+                          onClick={e=>e.stopPropagation()}
+                          className="text-[10px] text-on-surface-variant/40 hover:text-primary transition flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+                          Google Flights
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Historial expandido */}
+                    {expanded && hRuta.length > 1 && (
+                      <div className="mt-3 pt-3 border-t border-outline-variant/10" onClick={e=>e.stopPropagation()}>
+                        <p className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Historial de precios</p>
+                        <div className="flex items-end gap-0.5 h-14">
+                          {hRuta.slice(-20).map((h,i) => {
+                            const mx = Math.max(...hRuta.map((x:HistorialEntry)=>x.precio));
+                            const mn = Math.min(...hRuta.map((x:HistorialEntry)=>x.precio));
+                            const alt = Math.max(8, Math.round(((h.precio-mn)/(mx-mn||1))*44)+8);
+                            return (
+                              <div key={i} title={`$${h.precio}`} className="flex-1 flex items-end">
+                                <div className={`w-full rounded-sm transition-all ${h.es_ganga ? 'bg-amber-400' : 'bg-primary/50'}`} style={{height:`${alt}px`}}/>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span className="text-[9px] text-on-surface-variant">min ${Math.min(...hRuta.map((x:HistorialEntry)=>x.precio))}</span>
+                          <span className="text-[9px] text-on-surface-variant">{hRuta.length} registros</span>
+                          <span className="text-[9px] text-on-surface-variant">max ${Math.max(...hRuta.map((x:HistorialEntry)=>x.precio))}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
