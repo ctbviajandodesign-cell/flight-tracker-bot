@@ -2,6 +2,7 @@ import asyncio
 import os
 import csv
 import re
+import statistics
 import requests
 from io import StringIO
 from playwright.async_api import async_playwright
@@ -9,7 +10,7 @@ from bs4 import BeautifulSoup
 
 async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
     url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destino}%20from%20{origen}%20on%20{fecha_inicio}%20through%20{fecha_fin}&hl=es-419"
-    print(f"✈️ {origen} -> {destino}")
+    print(f"✈️ Analizando: {origen} -> {destino}")
     try:
         await page.goto(url, wait_until="commit", timeout=35000)
         await page.wait_for_timeout(6000)
@@ -22,35 +23,137 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
         html = await page.content()
         soup = BeautifulSoup(html, 'html.parser')
         elementos = soup.find_all(lambda tag: tag.has_attr('aria-label'))
+        precios_validos = []
 
-        print(f"\n===== TODOS los aria-label con dígitos para {destino} =====")
-        count = 0
+        # Preparar rango de meses para asignar fechas
+        f_ini = fecha_inicio.replace("/", "-")
+        f_fin = fecha_fin.replace("/", "-")
+        try:
+            m_ini = int(f_ini.split("-")[1])
+            y_ini = f_ini.split("-")[0]
+            m_fin = int(f_fin.split("-")[1])
+            y_fin = f_fin.split("-")[0]
+            meses = [(m_ini, y_ini), (m_fin, y_fin)] if m_ini != m_fin else [(m_ini, y_ini)]
+        except:
+            meses = []
+
+        mes_idx, prev_dia = 0, -1
+
+        meses_es = {
+            'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+            'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+            'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
+        }
+
         for e in elementos:
-            label = e.get('aria-label', '')
-            if re.search(r'\d{2,}', label):
-                print(f"  [{count}] {label[:150]}")
-                count += 1
-            if count >= 30:
-                break
-        print(f"===== FIN ({count} labels) =====\n")
+            label = e.get('aria-label', '').lower()
+
+            # Detectar precio — Google usa varios formatos:
+            # "$234", "US$234", "234 dólares", "234 dólares estadounidenses"
+            tiene_precio = any(x in label for x in [
+                'dólar', 'dolar', 'usd', '$', 'dólares estadounidenses'
+            ])
+            if not tiene_precio:
+                continue
+
+            # Extraer el número del precio
+            match = re.search(r'(\d[\d,\.]*)\s*(?:dólar|dolar|dólares|usd)?', label)
+            if not match:
+                match = re.search(r'(?:us\$|\$)\s*(\d[\d,\.]*)', label)
+            if not match:
+                continue
+
+            txt = match.group(1).replace(',', '').replace('.', '').strip()
+            try:
+                precio = int(txt)
+            except:
+                continue
+
+            if precio <= 10:
+                continue
+
+            # Detectar si es directo o con escala
+            tipo = "DIR" if any(x in label for x in [
+                "sin escala", "sin escalas", "directo", "nonstop", "vuelo directo"
+            ]) else "ESC"
+
+            # Intentar extraer fecha del aria-label: "15 de abril de 2026"
+            fecha_corta = "N/D"
+            match_fecha = re.search(
+                r'(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?',
+                label
+            )
+            if match_fecha:
+                dia = int(match_fecha.group(1))
+                mes_nombre = match_fecha.group(2)
+                mes_num = meses_es.get(mes_nombre, '00')
+                anio = match_fecha.group(3) if match_fecha.group(3) else (y_ini if meses else "2026")
+                fecha_corta = f"{dia:02d}/{mes_num}/{str(anio)[2:]}"
+            elif meses:
+                # Fallback: usar el día del texto del elemento padre
+                parent_text = e.parent.get_text(separator=' ', strip=True) if e.parent else ""
+                match_day = re.search(r'\b(\d{1,2})\b', parent_text)
+                if match_day:
+                    dia = int(match_day.group(1))
+                    if 1 <= dia <= 31:
+                        if dia < prev_dia and mes_idx < len(meses) - 1:
+                            mes_idx += 1
+                        prev_dia = dia
+                        m_act, y_act = meses[mes_idx]
+                        fecha_corta = f"{dia:02d}/{int(m_act):02d}/{str(y_act)[2:]}"
+
+            precios_validos.append((precio, fecha_corta, tipo))
+
+        if not precios_validos:
+            print(f"  ❌ Sin precios para {destino}")
+            return None
+
+        # Ordenar por precio y eliminar duplicados exactos (mismo precio+fecha)
+        precios_validos.sort(key=lambda x: x[0])
+        vistos = set()
+        unicos = []
+        for p in precios_validos:
+            clave = (p[0], p[1])  # precio + fecha como clave única
+            if clave not in vistos:
+                vistos.add(clave)
+                unicos.append(p)
+
+        mejores_3 = unicos[:3]
+        mediana = statistics.median([p[0] for p in unicos])
+
+        print(f"  💰 {len(unicos)} precios únicos para {destino}. Mejor: ${mejores_3[0][0]} ({mejores_3[0][1]})")
+
+        return {
+            "mejores": [{"precio": p[0], "detalle": p[1], "tipo": p[2]} for p in mejores_3],
+            "precio": mejores_3[0][0],
+            "url": url,
+            "mediana": int(mediana),
+            "es_ganga_mat": (mejores_3[0][0] <= (mediana * 0.8))
+        }
 
     except Exception as e:
-        print(f"  ❌ Error: {e}")
+        print(f"  ⚠️ Salto en {destino}: {e}")
     return None
+
 
 async def procesar_una_ruta(browser, r, semaphore):
     async with semaphore:
         context = await browser.new_context()
         page = await context.new_page()
         try:
-            await asyncio.wait_for(
+            res = await asyncio.wait_for(
                 extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
                 timeout=100
             )
-        except:
-            pass
+            if res:
+                res["ruta"] = f"{r['origen']} -> {r['destino']}"
+                res["alerta_manual"] = r['alerta']
+        except asyncio.TimeoutError:
+            print(f"  🛑 Tiempo agotado para {r['destino']}")
+            res = None
         await context.close()
-        return None
+        return res
+
 
 async def procesar_rutas():
     rutas_pendientes = []
@@ -69,20 +172,20 @@ async def procesar_rutas():
                     "alerta": int(row.get("PRECIO ALERTA", 0))
                 })
     except Exception as e:
-        print(f"❌ Error sheets: {e}")
+        print(f"❌ Error cargando rutas: {e}")
         return []
 
-    # Solo procesar GYE->PEI para el debug
-    rutas_pendientes = [r for r in rutas_pendientes if r["destino"] == "PEI"][:1]
-    print(f"📊 Procesando solo: {rutas_pendientes}")
+    if not rutas_pendientes:
+        return []
 
-    semaphore = asyncio.Semaphore(1)
+    semaphore = asyncio.Semaphore(3)
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         tasks = [procesar_una_ruta(browser, r, semaphore) for r in rutas_pendientes]
-        await asyncio.gather(*tasks)
+        respuestas = await asyncio.gather(*tasks)
         await browser.close()
-    return []
+        return [r for r in respuestas if r]
 
 if __name__ == "__main__":
     asyncio.run(procesar_rutas())
