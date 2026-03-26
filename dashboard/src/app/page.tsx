@@ -161,7 +161,7 @@ export default function Dashboard() {
 
             
 
-              Monitor de Vuelos CTB
+            <h1 className="...">Monitor de Vuelos CTB</h1>
             
 
             
