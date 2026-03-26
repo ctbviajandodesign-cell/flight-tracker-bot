@@ -45,9 +45,14 @@ async def guardar_en_supabase(resultados):
     except Exception as e:
         print(f"❌ Error Supabase: {e}")
 
+
 async def main():
+    ahora_utc = datetime.utcnow()
+    ahora_ec = datetime.utcnow().replace(hour=(datetime.utcnow().hour - 5) % 24)
+    hora_utc = ahora_utc.hour
+    fecha_hora = ahora_utc.strftime('%d/%m/%Y')
+
     print("🚀 Iniciando rastreo inteligente...")
-    hora_utc = datetime.utcnow().hour
 
     # 12 UTC = 7:47 AM Ecuador → GENERAL
     # 15 UTC = 10:47 AM Ecuador → SOLO GANGAS
@@ -70,13 +75,23 @@ async def main():
     vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
 
     if es_reporte_diario and vuelos_ganga:
-        titulo = "🌐 <b>REPORTE DIARIO</b> — 🚨 <b>¡Hay gangas!</b>\n\n"
+        titulo = (
+            f"🌐 <b>REPORTE DIARIO CTB</b> — {fecha_hora}\n"
+            f"🚨 <b>¡{len(vuelos_ganga)} gangas detectadas!</b>\n"
+            f"📊 {len(resultados)} rutas analizadas\n\n"
+        )
         vuelos_a_mostrar = resultados
     elif es_reporte_diario:
-        titulo = "🌐 <b>REPORTE DIARIO</b>\n\n"
+        titulo = (
+            f"🌐 <b>REPORTE DIARIO CTB</b> — {fecha_hora}\n"
+            f"📊 {len(resultados)} rutas analizadas — sin gangas por ahora\n\n"
+        )
         vuelos_a_mostrar = resultados
     elif vuelos_ganga:
-        titulo = "🚨 <b>¡GANGAS DETECTADAS!</b>\n\n"
+        titulo = (
+            f"🚨 <b>¡ALERTA DE GANGAS!</b> — {fecha_hora}\n"
+            f"🔥 <b>{len(vuelos_ganga)} oportunidades detectadas</b>\n\n"
+        )
         vuelos_a_mostrar = vuelos_ganga
     else:
         return
@@ -84,23 +99,33 @@ async def main():
     mensaje = titulo
     for r in vuelos_a_mostrar:
         ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
-        icono = "🚨" if (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']) else "📍"
-        bloque = f"{icono} <b>{ruta_l}</b>\n"
+        es_ganga = r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']
+        icono = "🚨" if es_ganga else "✈️"
+
+        bloque = f"{icono} <b>{ruta_l}</b>"
+        if es_ganga:
+            bloque += " <i>← GANGA</i>"
+        bloque += "\n"
+
         for i, opc in enumerate(r['mejores']):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
             if opc['tipo'] == "DIR":
-                tipo_txt = " — 🚀 Directo"
+                tipo_txt = " 🚀 <i>Directo</i>"
             elif opc['tipo'] == "ESC":
-                tipo_txt = " — 🛬 Escala"
+                tipo_txt = " 🛬 <i>Escala</i>"
             else:
                 tipo_txt = ""
-            bloque += f"   {medal} <b>${opc['precio']} USD</b> — {opc['detalle']}{tipo_txt}\n"
+            fecha_txt = opc['detalle'] if opc['detalle'] != 'N/D' else "—"
+            bloque += f"   {medal} <b>${opc['precio']} USD</b> — {fecha_txt}{tipo_txt}\n"
+
         url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        bloque += f"   📊 Promedio mes: ${r['mediana']} USD\n"
-        bloque += f"   🔗 <a href='{url_l}'>Ver en Google Flights</a>\n\n"
+        bloque += f"   <i>📊 Promedio: ${r['mediana']} USD</i>\n"
+        bloque += f"   🔗 <a href=\"{url_l}\">Ver en Google Flights</a>\n"
+        bloque += "─────────────────\n"
         mensaje += bloque
 
     enviar_notificacion_telegram(mensaje)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
