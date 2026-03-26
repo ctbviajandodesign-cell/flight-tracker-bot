@@ -27,14 +27,14 @@ export async function GET() {
 
     const data: any[] = await res.json();
 
-    const ultimoPorRuta: Record = {};
+    const ultimoPorRuta: Record<string, any> = {};
     for (const row of data) {
       if (!ultimoPorRuta[row.ruta]) {
         ultimoPorRuta[row.ruta] = row;
       }
     }
 
-    const historialPorRuta: Record = {};
+    const historialPorRuta: Record<string, any[]> = {};
     for (const row of data) {
       if (!historialPorRuta[row.ruta]) historialPorRuta[row.ruta] = [];
       if (historialPorRuta[row.ruta].length < 30) {
