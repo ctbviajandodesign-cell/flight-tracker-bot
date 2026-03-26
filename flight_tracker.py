@@ -68,25 +68,24 @@ async def main():
     await guardar_en_supabase(resultados)
 
     vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
-vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
 
-if es_reporte_diario and vuelos_ganga:
-    titulo = "🌐 <b>REPORTE DIARIO</b> — 🚨 <b>¡Hay gangas!</b>\n\n"
-    vuelos_a_mostrar = resultados
-elif es_reporte_diario:
-    titulo = "🌐 <b>REPORTE DIARIO</b>\n\n"
-    vuelos_a_mostrar = resultados
-elif vuelos_ganga:
-    titulo = "🚨 <b>¡GANGAS DETECTADAS!</b>\n\n"
-    vuelos_a_mostrar = vuelos_ganga
-else:
-    return
+    if es_reporte_diario and vuelos_ganga:
+        titulo = "🌐 <b>REPORTE DIARIO</b> — 🚨 <b>¡Hay gangas!</b>\n\n"
+        vuelos_a_mostrar = resultados
+    elif es_reporte_diario:
+        titulo = "🌐 <b>REPORTE DIARIO</b>\n\n"
+        vuelos_a_mostrar = resultados
+    elif vuelos_ganga:
+        titulo = "🚨 <b>¡GANGAS DETECTADAS!</b>\n\n"
+        vuelos_a_mostrar = vuelos_ganga
+    else:
+        return
 
     mensaje = titulo
     for r in vuelos_a_mostrar:
-        ruta_l = r['ruta'].replace("<", "<").replace(">", ">")
+        ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
         icono = "🚨" if (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']) else "📍"
-        bloque = f"{icono} {ruta_l}\n"
+        bloque = f"{icono} <b>{ruta_l}</b>\n"
         for i, opc in enumerate(r['mejores']):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
             if opc['tipo'] == "DIR":
@@ -95,10 +94,10 @@ else:
                 tipo_txt = " — 🛬 Escala"
             else:
                 tipo_txt = ""
-            bloque += f"   {medal} ${opc['precio']} USD — {opc['detalle']}{tipo_txt}\n"
-        url_l = r['url'].replace("&", "&").replace("<", "<").replace(">", ">")
+            bloque += f"   {medal} <b>${opc['precio']} USD</b> — {opc['detalle']}{tipo_txt}\n"
+        url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         bloque += f"   📊 Promedio mes: ${r['mediana']} USD\n"
-        bloque += f"   🔗 Ver en Google Flights\n\n"
+        bloque += f"   🔗 <a href='{url_l}'>Ver en Google Flights</a>\n\n"
         mensaje += bloque
 
     enviar_notificacion_telegram(mensaje)
