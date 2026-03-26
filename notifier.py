@@ -1,66 +1,89 @@
 import os
 import requests
 import time
-from dotenv import load_dotenv
 import re
+from dotenv import load_dotenv
 
 load_dotenv()
 
-def enviar_notificacion_telegram(mensaje_texto):
-    token = os.getenv("TELEGRAM_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
-        print("⚠️ Credenciales de Telegram faltantes.")
-        return
+def limpiar_html(texto):
+    """Limpia todos los tags HTML para fallback a texto plano"""
+    texto = re.sub(r'<b>(.*?)</b>', r'\1', texto, flags=re.DOTALL)
+    texto = re.sub(r'<i>(.*?)</i>', r'\1', texto, flags=re.DOTALL)
+    texto = re.sub(r'<a href=["\'].*?["\']>(.*?)</a>', r'\1', texto, flags=re.DOTALL)
+    texto = re.sub(r'<[^>]+>', '', texto)
+    texto = texto.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+    return texto
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-
-    bloques = mensaje_texto.split("\n\n")
-    mensajes_a_enviar = []
-    mensaje_actual = ""
-
+def dividir_mensaje(texto, max_len=3900):
+    """Divide el mensaje en partes respetando bloques de rutas"""
+    bloques = texto.split('\n\n')
+    partes = []
+    actual = ''
     for bloque in bloques:
         if not bloque.strip():
             continue
-        if len(mensaje_actual) + len(bloque) + 5 > 3900:
-            mensajes_a_enviar.append(mensaje_actual)
-            mensaje_actual = bloque + "\n\n"
+        if len(actual) + len(bloque) + 5 > max_len:
+            if actual:
+                partes.append(actual)
+            actual = bloque + '\n\n'
         else:
-            mensaje_actual += bloque + "\n\n"
+            actual += bloque + '\n\n'
+    if actual.strip():
+        partes.append(actual)
+    return partes
 
-    if mensaje_actual:
-        mensajes_a_enviar.append(mensaje_actual)
+def enviar_notificacion_telegram(mensaje_texto):
+    token = os.getenv('TELEGRAM_TOKEN')
+    chat_id = os.getenv('TELEGRAM_CHAT_ID')
+    if not token or not chat_id:
+        print('⚠️ Credenciales de Telegram faltantes.')
+        return
 
-    for i, msg in enumerate(mensajes_a_enviar):
+    url = f'https://api.telegram.org/bot{token}/sendMessage'
+    partes = dividir_mensaje(mensaje_texto)
+
+    for i, msg in enumerate(partes):
         texto = msg
-        if len(mensajes_a_enviar) > 1:
-            texto = f"<b>[ Parte {i+1} de {len(mensajes_a_enviar)} ]</b>\n\n" + msg
+        if len(partes) > 1:
+            texto = f'<b>[ Parte {i+1} de {len(partes)} ]</b>\n\n' + msg
 
+        # Intento 1: HTML completo
         payload = {
-            "chat_id": chat_id,
-            "text": texto,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": True
+            'chat_id': chat_id,
+            'text': texto,
+            'parse_mode': 'HTML',
+            'disable_web_page_preview': True
         }
-
         try:
-            response = requests.post(url, json=payload, timeout=30)
-            if response.status_code == 400:
-                # Fallback: limpiar HTML y reenviar
-                texto_plano = re.sub(r'<[^>]+>', '', texto)
-                texto_plano = texto_plano.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
-                payload_plano = {
-                    "chat_id": chat_id,
-                    "text": texto_plano,
-                    "disable_web_page_preview": True
-                }
-                response = requests.post(url, json=payload_plano, timeout=30)
-                print(f"⚠️ Parte {i+1} enviada sin formato (HTML falló)")
+            resp = requests.post(url, json=payload, timeout=30)
+            if resp.status_code == 200:
+                print(f'✅ Parte {i+1} enviada con formato HTML.')
+                time.sleep(1.5)
+                continue
             else:
-                response.raise_for_status()
-                print(f"✅ Parte {i+1} enviada con formato.")
-            time.sleep(1.5)
+                error_detail = resp.json().get('description', resp.text[:200])
+                print(f'⚠️ HTML falló ({resp.status_code}): {error_detail}')
         except Exception as e:
-            print(f"❌ Error en Telegram: {e}")
-            if hasattr(response, 'text'):
-                print(f"   Respuesta: {response.text[:300]}")
+            print(f'⚠️ Excepción en intento HTML: {e}')
+
+        # Intento 2: Texto plano sin formato
+        texto_plano = limpiar_html(texto)
+        if len(partes) > 1:
+            texto_plano = f'[ Parte {i+1} de {len(partes)} ]\n\n' + limpiar_html(msg)
+
+        payload_plano = {
+            'chat_id': chat_id,
+            'text': texto_plano,
+            'disable_web_page_preview': True
+        }
+        try:
+            resp2 = requests.post(url, json=payload_plano, timeout=30)
+            if resp2.status_code == 200:
+                print(f'⚠️ Parte {i+1} enviada sin formato (fallback texto plano).')
+            else:
+                print(f'❌ Ambos intentos fallaron: {resp2.json().get("description", resp2.text[:200])}')
+        except Exception as e2:
+            print(f'❌ Error definitivo en Telegram: {e2}')
+
+        time.sleep(1.5)
