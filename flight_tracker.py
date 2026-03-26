@@ -31,22 +31,21 @@ async def guardar_en_supabase(resultados):
             await client.post(f"{url}/rest/v1/vuelos_historial", json=datos, headers=headers)
             print("✅ Supabase actualizado.")
     except:
-        print("⚠️ Falló conexión base de datos.")
+        print("⚠️ Error base de datos.")
 
 async def main():
     print("🚀 Iniciando rastreo inteligente...")
     hora_utc = datetime.utcnow().hour
     es_reporte_diario = (hora_utc in [12, 19, 1])
 
-    # TIEMPO LÍMITE TOTAL DE 40 MINUTOS (2400 segundos)
     try:
         resultados = await asyncio.wait_for(procesar_rutas(), timeout=2400)
     except:
-        print("❌ El proceso tardó demasiado y fue detenido por seguridad.")
+        print("❌ Tiempo excedido.")
         return
 
     if not resultados:
-        print("No se encontraron resultados.")
+        print("Sin resultados.")
         return
 
     await guardar_en_supabase(resultados)
@@ -65,13 +64,11 @@ async def main():
     for r in vuelos_a_mostrar:
         ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
         icono = "🚨" if (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']) else "📍"
-
         bloque = f"{icono} <b>{ruta_l}</b>\n"
         for i, opc in enumerate(r['mejores']):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
             tipo = "🚀" if opc['tipo'] == "DIR" else "🛬"
             bloque += f"   {medal} <b>${opc['precio']} USD</b> - {opc['detalle']} {tipo}\n"
-
         url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         bloque += f"   📊 Promedio: ${r['mediana']} USD\n"
         bloque += f"   🔗 <a href='{url_l}'>Ver en Google Flights</a>\n\n"
