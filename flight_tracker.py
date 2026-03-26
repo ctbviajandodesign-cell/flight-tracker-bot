@@ -27,25 +27,26 @@ async def guardar_en_supabase(resultados):
             "tipo_vuelo": r['mejores'][0]['tipo'] if r['mejores'] else "UNK"
         })
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             await client.post(f"{url}/rest/v1/vuelos_historial", json=datos, headers=headers)
             print("✅ Supabase actualizado.")
     except:
-        print("⚠️ Error base de datos.")
+        print("⚠️ Falló conexión base de datos.")
 
 async def main():
-    print("🚀 Iniciando rastreo...")
+    print("🚀 Iniciando rastreo inteligente...")
     hora_utc = datetime.utcnow().hour
     es_reporte_diario = (hora_utc in [12, 19, 1])
 
+    # TIEMPO LÍMITE TOTAL DE 40 MINUTOS (2400 segundos)
     try:
-        resultados = await asyncio.wait_for(procesar_rutas(), timeout=1200)
+        resultados = await asyncio.wait_for(procesar_rutas(), timeout=2400)
     except:
-        print("❌ Tiempo excedido.")
+        print("❌ El proceso tardó demasiado y fue detenido por seguridad.")
         return
 
     if not resultados:
-        print("Sin resultados.")
+        print("No se encontraron resultados.")
         return
 
     await guardar_en_supabase(resultados)
@@ -62,10 +63,10 @@ async def main():
 
     mensaje = titulo
     for r in vuelos_a_mostrar:
-        ruta_limpia = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
+        ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
         icono = "🚨" if (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']) else "📍"
 
-        bloque = f"{icono} <b>{ruta_limpia}</b>\n"
+        bloque = f"{icono} <b>{ruta_l}</b>\n"
         for i, opc in enumerate(r['mejores']):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
             tipo = "🚀" if opc['tipo'] == "DIR" else "🛬"
