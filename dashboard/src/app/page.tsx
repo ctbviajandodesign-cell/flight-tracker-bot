@@ -400,7 +400,7 @@ export default function Dashboard() {
                           {precio.mediana > 0 && <p className="text-xs text-on-surface-variant">📊 Prom: ${precio.mediana}</p>}
                           {precio.precio_alerta > 0 && <p className="text-xs text-on-surface-variant">🎯 Alerta: ${precio.precio_alerta}</p>}
                           <p className="text-[10px] text-on-surface-variant mt-1">
-                            {new Date(new Date(precio.fecha).getTime() - 5 * 60 * 60 * 1000).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            {new Date(precio.fecha).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
                       </div>
@@ -459,6 +459,17 @@ export default function Dashboard() {
                     <p className="text-[10px] text-on-surface-variant text-center mt-3">
                       {rutaDetalle === rutaKey ? '▲ Ocultar historial' : '▼ Ver historial de precios'}
                     </p>
+                  )}
+                  {precio?.url_vuelo && (
+                    <a
+                      href={precio.url_vuelo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="block text-center text-[10px] text-on-surface-variant/50 hover:text-primary mt-2 transition-colors"
+                    >
+                      🔗 Ver en Google Flights
+                    </a>
                   )}
                 </div>
               );
