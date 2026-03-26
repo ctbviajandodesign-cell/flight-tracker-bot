@@ -367,7 +367,7 @@ export default function Dashboard() {
                         <div className="flex items-end justify-between">
                           <div>
                             <p className={`text-[9px] uppercase tracking-widest font-bold mb-1 ${ganga ? 'text-amber-500/70' : 'text-on-surface-variant'}`}>mejor precio</p>
-                            <p className={`text-3xl font-black leading-none ${ganga ? 'text-amber-400' : 'text-primary'}`}>
+                            <p className={`text-3xl font-black leading-none ${ganga ? 'text-amber-700 dark:text-amber-400' : 'text-primary'}`}>
                               ${p.precio.toLocaleString()}
                               <span className="text-xs font-normal text-on-surface-variant ml-1">USD</span>
                             </p>
