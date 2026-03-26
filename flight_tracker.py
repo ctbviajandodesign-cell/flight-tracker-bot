@@ -71,10 +71,10 @@ async def main():
 vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
 
 if es_reporte_diario and vuelos_ganga:
-    titulo = "🌅 <b>REPORTE DIARIO</b> — 🚨 <b>¡Hay gangas!</b>\n\n"
+    titulo = "🌐 <b>REPORTE DIARIO</b> — 🚨 <b>¡Hay gangas!</b>\n\n"
     vuelos_a_mostrar = resultados
 elif es_reporte_diario:
-    titulo = "🌅 <b>REPORTE DIARIO</b>\n\n"
+    titulo = "🌐 <b>REPORTE DIARIO</b>\n\n"
     vuelos_a_mostrar = resultados
 elif vuelos_ganga:
     titulo = "🚨 <b>¡GANGAS DETECTADAS!</b>\n\n"
