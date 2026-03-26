@@ -36,7 +36,12 @@ async def guardar_en_supabase(resultados):
 async def main():
     print("🚀 Iniciando rastreo inteligente...")
     hora_utc = datetime.utcnow().hour
-    es_reporte_diario = (hora_utc in [12, 19, 1])
+
+    # 12 UTC = 7:47 AM Ecuador → GENERAL
+    # 15 UTC = 10:47 AM Ecuador → SOLO GANGAS
+    # 20 UTC = 3:10 PM Ecuador  → GENERAL
+    # 21 UTC = 4:45 PM Ecuador  → SOLO GANGAS
+    es_reporte_diario = (hora_utc in [12, 20])
 
     try:
         resultados = await asyncio.wait_for(procesar_rutas(), timeout=2400)
@@ -67,7 +72,6 @@ async def main():
         bloque = f"{icono} {ruta_l}\n"
         for i, opc in enumerate(r['mejores']):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
-            # Solo mostrar tipo si hay certeza
             if opc['tipo'] == "DIR":
                 tipo_txt = " — 🚀 Directo"
             elif opc['tipo'] == "ESC":
