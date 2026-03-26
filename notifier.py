@@ -13,8 +13,7 @@ def enviar_notificacion_telegram(mensaje_texto):
         return
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    
-    # Dividimos el reporte en bloques de vuelos completos
+
     bloques = mensaje_texto.split("\n\n")
     mensajes_a_enviar = []
     mensaje_actual = ""
@@ -27,7 +26,7 @@ def enviar_notificacion_telegram(mensaje_texto):
             mensaje_actual = bloque + "\n\n"
         else:
             mensaje_actual += bloque + "\n\n"
-    
+
     if mensaje_actual:
         mensajes_a_enviar.append(mensaje_actual)
 
@@ -35,19 +34,26 @@ def enviar_notificacion_telegram(mensaje_texto):
         texto = msg
         if len(mensajes_a_enviar) > 1:
             texto = f"<b>[Parte {i+1}/{len(mensajes_a_enviar)}]</b>\n\n" + msg
-        
+
+        # Intentar primero con HTML
         payload = {
             "chat_id": chat_id,
             "text": texto,
             "parse_mode": "HTML",
             "disable_web_page_preview": True
         }
-        
+
         try:
             response = requests.post(url, json=payload, timeout=30)
             if response.status_code == 400:
-                payload["parse_mode"] = ""
-                response = requests.post(url, json=payload, timeout=30)
+                # Si falla HTML, enviar sin formato (quitar tags)
+                texto_plano = texto.replace("<b>", "").replace("</b>", "").replace("<a href='", "").replace("'>", " - ").replace("</a>", "")
+                payload_plano = {
+                    "chat_id": chat_id,
+                    "text": texto_plano,
+                    "disable_web_page_preview": True
+                }
+                response = requests.post(url, json=payload_plano, timeout=30)
             response.raise_for_status()
             print(f"✅ Parte {i+1} enviada.")
             time.sleep(1.5)
