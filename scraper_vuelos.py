@@ -3,12 +3,14 @@ import os
 import csv
 import re
 import statistics
+import requests
+from io import StringIO
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 
 async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
     url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destino}%20from%20{origen}%20on%20{fecha_inicio}%20through%20{fecha_fin}&hl=es-419"
-    print(f"✈️ Analizando: {origen} -> {destino}")
+    print(f"✈️ Analizando: {origen} ➡️ {destino}")
     try:
         await page.goto(url, wait_until="commit", timeout=35000)
         await page.wait_for_timeout(5000)
@@ -23,6 +25,7 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
         elementos = soup.find_all(lambda tag: tag.has_attr('aria-label'))
         precios_validos = []
 
+        # Lógica de fechas
         f_ini = fecha_inicio.replace("/", "-")
         m_ini = int(f_ini.split("-")[1])
         y_ini = f_ini.split("-")[0]
@@ -75,8 +78,8 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
                 "es_ganga_mat": (mejores_3[0][0] <= (mediana * 0.8))
             }
 
-    except:
-        pass
+    except Exception as e:
+        print(f"  ❌ Error en {destino}: {e}")
 
     return None
 
@@ -90,7 +93,7 @@ async def procesar_una_ruta(browser, r, semaphore):
                 timeout=100
             )
             if res:
-                res["ruta"] = f"{r['origen']} -> {r['destino']}"
+                res["ruta"] = f"{r['origen']} ➡️ {r['destino']}"
                 res["alerta_manual"] = r['alerta']
         except:
             res = None
@@ -101,29 +104,42 @@ async def procesar_una_ruta(browser, r, semaphore):
 async def procesar_rutas():
     rutas_pendientes = []
 
-    try:
-        import requests
-        from io import StringIO
+    print("📡 Intentando conectar con Google Sheets...")
 
+    try:
         url_csv = os.getenv("GOOGLE_SHEETS_URL", "")
+        if not url_csv:
+            print("❌ Error: No se encontró la URL de Google Sheets en los Secrets.")
+            return []
+
         response = requests.get(url_csv, timeout=15)
+        print(f"✅ Respuesta de Google Sheets recibida (Código: {response.status_code})")
+
         f = StringIO(response.text)
         reader = csv.DictReader(f)
 
-        for row in reader:
-            if row.get("ORIGEN") and row.get("DESTINO"):
+        for i, row in enumerate(reader):
+            r = {k.upper(): v for k, v in row.items()}
+            origen = r.get("ORIGEN", "").strip()
+            destino = r.get("DESTINO", "").strip()
+
+            if origen and destino:
                 rutas_pendientes.append({
-                    "origen": row["ORIGEN"],
-                    "destino": row["DESTINO"],
-                    "inicio": row["MES DE INICIO"].replace("/", "-"),
-                    "fin": row["MES DE FIN"].replace("/", "-"),
-                    "alerta": int(row.get("PRECIO ALERTA", 0))
+                    "origen": origen,
+                    "destino": destino,
+                    "inicio": r.get("MES DE INICIO", "").replace("/", "-"),
+                    "fin": r.get("MES DE FIN", "").replace("/", "-"),
+                    "alerta": int(r.get("PRECIO ALERTA", 0))
                 })
 
-    except:
+        print(f"📊 Se encontraron {len(rutas_pendientes)} rutas para procesar.")
+
+    except Exception as e:
+        print(f"❌ Error crítico cargando rutas: {e}")
         return []
 
     if not rutas_pendientes:
+        print("⚠️ Advertencia: La lista de rutas está vacía. Verifica tu Google Sheets.")
         return []
 
     semaphore = asyncio.Semaphore(4)
