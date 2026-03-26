@@ -14,7 +14,7 @@ def enviar_notificacion_telegram(mensaje_texto):
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     
-    # Dividimos por bloques de vuelos (separados por \n\n)
+    # Dividimos el reporte en bloques de vuelos completos
     bloques = mensaje_texto.split("\n\n")
     mensajes_a_enviar = []
     mensaje_actual = ""
@@ -22,8 +22,7 @@ def enviar_notificacion_telegram(mensaje_texto):
     for bloque in bloques:
         if not bloque.strip():
             continue
-        # Si añadir este bloque supera el límite de Telegram (4096), guardamos el actual y empezamos uno nuevo
-        if len(mensaje_actual) + len(bloque) + 2 > 3800:
+        if len(mensaje_actual) + len(bloque) + 5 > 3900:
             mensajes_a_enviar.append(mensaje_actual)
             mensaje_actual = bloque + "\n\n"
         else:
@@ -47,12 +46,10 @@ def enviar_notificacion_telegram(mensaje_texto):
         try:
             response = requests.post(url, json=payload, timeout=30)
             if response.status_code == 400:
-                print(f"❌ Error 400 en Parte {i+1}. Intentando enviar sin HTML...")
                 payload["parse_mode"] = ""
                 response = requests.post(url, json=payload, timeout=30)
-            
             response.raise_for_status()
-            print(f"✅ Parte {i+1}/{len(mensajes_a_enviar)} enviada.")
-            time.sleep(1)
+            print(f"✅ Parte {i+1} enviada.")
+            time.sleep(1.5)
         except Exception as e:
-            print(f"❌ Error crítico Telegram: {e}")
+            print(f"❌ Error en Telegram: {e}")
