@@ -68,14 +68,19 @@ async def main():
     await guardar_en_supabase(resultados)
 
     vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
-    if vuelos_ganga:
-        titulo = "🚨 ¡GANGAS DETECTADAS!\n\n"
-        vuelos_a_mostrar = resultados if es_reporte_diario else vuelos_ganga
-    elif es_reporte_diario:
-        titulo = "🌅 REPORTE DIARIO\n\n"
-        vuelos_a_mostrar = resultados
-    else:
-        return
+vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
+
+if es_reporte_diario and vuelos_ganga:
+    titulo = "🌅 <b>REPORTE DIARIO</b> — 🚨 <b>¡Hay gangas!</b>\n\n"
+    vuelos_a_mostrar = resultados
+elif es_reporte_diario:
+    titulo = "🌅 <b>REPORTE DIARIO</b>\n\n"
+    vuelos_a_mostrar = resultados
+elif vuelos_ganga:
+    titulo = "🚨 <b>¡GANGAS DETECTADAS!</b>\n\n"
+    vuelos_a_mostrar = vuelos_ganga
+else:
+    return
 
     mensaje = titulo
     for r in vuelos_a_mostrar:
