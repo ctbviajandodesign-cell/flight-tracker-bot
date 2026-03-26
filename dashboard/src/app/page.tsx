@@ -7,7 +7,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-const IATA_MAP: Record = {
+const IATA_MAP: Record<string, string> = {
   GYE: "Guayaquil", UIO: "Quito", CUE: "Cuenca",
   BOG: "Bogotá", MDE: "Medellín", PTY: "Panamá",
   MIA: "Miami", NYC: "Nueva York", MAD: "Madrid",
@@ -35,14 +35,14 @@ type PrecioData = {
 type HistorialEntry = { fecha: string; precio: number; es_ganga: boolean };
 
 export default function Dashboard() {
-  const [rutas, setRutas] = useState([]);
-  const [precios, setPrecios] = useState>({});
-  const [historial, setHistorial] = useState>({});
+  const [rutas, setRutas] = useState<any[]>([]);
+  const [precios, setPrecios] = useState<Record<string, PrecioData>>({});
+  const [historial, setHistorial] = useState<Record<string, HistorialEntry[]>>({});
   const [cargando, setCargando] = useState(true);
   const [errorSync, setErrorSync] = useState('');
   const [filtro, setFiltro] = useState('');
   const [vistaActiva, setVistaActiva] = useState<'tarjetas' | 'comparativa'>('tarjetas');
-  const [rutaDetalle, setRutaDetalle] = useState(null);
+  const [rutaDetalle, setRutaDetalle] = useState<string | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [nuevoVuelo, setNuevoVuelo] = useState({ origen: '', destino: '', ida: '', vuelta: '', alerta: '', dias_paquete: '' });
   const [tipoFecha, setTipoFecha] = useState<'mes' | 'exacta'>('mes');
@@ -61,9 +61,8 @@ export default function Dashboard() {
 
       if (dataRutas.success) setRutas(dataRutas.flights);
       if (dataPrecios.success) {
-        const mapaPrecios: Record = {};
+        const mapaPrecios: Record<string, PrecioData> = {};
         for (const p of dataPrecios.precios) {
-          // Normalizar la clave de ruta
           const clave = p.ruta.replace(' ➡️ ', ' -> ').replace('➡️', '->').trim();
           mapaPrecios[clave] = p;
         }
@@ -100,7 +99,11 @@ export default function Dashboard() {
   const agregarRuta = async (e: React.FormEvent) => {
     e.preventDefault();
     const tempId = Date.now();
-    const nuevaRuta = { id: tempId, ...nuevoVuelo, alerta: nuevoVuelo.alerta ? Number(nuevoVuelo.alerta) : '', dias_paquete: nuevoVuelo.dias_paquete ? Number(nuevoVuelo.dias_paquete) : '' };
+    const nuevaRuta = {
+      id: tempId, ...nuevoVuelo,
+      alerta: nuevoVuelo.alerta ? Number(nuevoVuelo.alerta) : '',
+      dias_paquete: nuevoVuelo.dias_paquete ? Number(nuevoVuelo.dias_paquete) : ''
+    };
     setRutas([...rutas, nuevaRuta]);
     setMostrarFormulario(false);
     setNuevoVuelo({ origen: '', destino: '', ida: '', vuelta: '', alerta: '', dias_paquete: '' });
@@ -126,8 +129,7 @@ export default function Dashboard() {
     return tipo === 'mes' ? format(date, 'yyyy-MM') : format(date, 'yyyy-MM-dd');
   };
 
-  // Agrupar rutas por destino para vista comparativa GYE vs UIO
-  const rutasPorDestino = rutas.reduce((acc: Record, ruta) => {
+  const rutasPorDestino = rutas.reduce((acc: Record<string, any[]>, ruta) => {
     if (!acc[ruta.destino]) acc[ruta.destino] = [];
     acc[ruta.destino].push(ruta);
     return acc;
@@ -144,496 +146,321 @@ export default function Dashboard() {
   const totalGangas = rutas.filter(r => getPrecioRuta(r.origen, r.destino)?.es_ganga).length;
 
   return (
-    
+    <div className="min-h-screen bg-background text-on-background relative overflow-hidden font-sans transition-colors duration-300 pb-20">
+      <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
+      <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-secondary/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
-      
+      <div className="max-w-5xl mx-auto p-8 relative z-10 pt-16">
 
-      
-
-
-      
-
-
-        {/* HEADER */}
-        
-
-          
-
-            
-
-            <h1 className="...">Monitor de Vuelos CTB</h1>
-            
-
-            
-
-
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-outline-variant/20 pb-6 gap-6">
+          <div>
+            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-primary to-primary-container bg-clip-text text-transparent mb-2">
+              Monitor de Vuelos CTB
+            </h1>
+            <p className="text-on-surface-variant text-sm">
               {rutas.length} rutas monitoreadas
-              {totalGangas > 0 && 🚨 {totalGangas} gangas activas}
-            
-
-
-            {errorSync && 
-
-{errorSync}
-
-}
-          
-
-          
-
+              {totalGangas > 0 && (
+                <span className="ml-2 bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full text-xs font-bold">
+                  🚨 {totalGangas} gangas activas
+                </span>
+              )}
+            </p>
+            {errorSync && <p className="text-error mt-2 text-xs font-bold bg-error/10 p-2 rounded">{errorSync}</p>}
+          </div>
+          <div className="flex flex-col md:flex-row items-center gap-4">
             {mounted && (
-              
-
-                 setTheme('light')} className={`p-2 rounded-lg flex items-center justify-center transition ${theme === 'light' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                  light_mode
-                
-                 setTheme('dark')} className={`p-2 rounded-lg flex items-center justify-center transition ${theme === 'dark' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                  dark_mode
-                
-                 setTheme('system')} className={`p-2 rounded-lg flex items-center justify-center transition ${theme === 'system' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                  desktop_windows
-                
-              
-
+              <div className="flex bg-surface-container-low border border-outline-variant/20 rounded-xl p-1 shadow-sm">
+                <button onClick={() => setTheme('light')} className={`p-2 rounded-lg flex items-center justify-center transition ${theme === 'light' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                  <span className="material-symbols-outlined text-[20px]">light_mode</span>
+                </button>
+                <button onClick={() => setTheme('dark')} className={`p-2 rounded-lg flex items-center justify-center transition ${theme === 'dark' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                  <span className="material-symbols-outlined text-[20px]">dark_mode</span>
+                </button>
+                <button onClick={() => setTheme('system')} className={`p-2 rounded-lg flex items-center justify-center transition ${theme === 'system' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                  <span className="material-symbols-outlined text-[20px]">desktop_windows</span>
+                </button>
+              </div>
             )}
-             setMostrarFormulario(!mostrarFormulario)}
+            <button
+              onClick={() => setMostrarFormulario(!mostrarFormulario)}
               className="bg-primary text-surface-container-lowest px-6 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(143,245,255,0.2)] hover:brightness-110 flex items-center gap-2 transition whitespace-nowrap">
-              {mostrarFormulario ? "close" : "add"}
+              <span className="material-symbols-outlined font-bold text-xl">{mostrarFormulario ? "close" : "add"}</span>
               {mostrarFormulario ? "Cancelar" : "Agregar Ruta"}
-            
-          
+            </button>
+          </div>
+        </header>
 
-        
-
-
-        {/* TABS VISTA */}
-        
-
-           setVistaActiva('tarjetas')}
+        <div className="flex gap-2 mb-6">
+          <button onClick={() => setVistaActiva('tarjetas')}
             className={`px-4 py-2 rounded-lg text-sm font-bold transition ${vistaActiva === 'tarjetas' ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'}`}>
             📋 Todas las rutas
-          
-           setVistaActiva('comparativa')}
+          </button>
+          <button onClick={() => setVistaActiva('comparativa')}
             className={`px-4 py-2 rounded-lg text-sm font-bold transition ${vistaActiva === 'comparativa' ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'}`}>
-            ⚖️ GYE vs UIO por destino
-          
-          
-            refresh Actualizar
-          
-        
+            ⚖️ GYE vs UIO
+          </button>
+          <button onClick={cargarRutas} className="ml-auto px-4 py-2 rounded-lg text-sm font-bold bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition flex items-center gap-1">
+            <span className="material-symbols-outlined text-[16px]">refresh</span> Actualizar
+          </button>
+        </div>
 
-
-        {/* BUSCADOR */}
         {!mostrarFormulario && vistaActiva === 'tarjetas' && rutas.length > 0 && (
-          
-
-            search
-             setFiltro(e.target.value)}
+          <div className="mb-6 relative max-w-md">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+            <input type="text" placeholder="Buscar por código o ciudad..." value={filtro}
+              onChange={e => setFiltro(e.target.value)}
               className="w-full bg-surface-container-low text-on-surface border border-outline-variant/20 rounded-full py-3 pl-12 pr-4 outline-none focus:border-primary shadow-sm transition-all text-sm font-medium" />
-            {filtro &&  setFiltro('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
-              close
-            }
-          
-
+            {filtro && (
+              <button onClick={() => setFiltro('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            )}
+          </div>
         )}
 
-        {/* FORMULARIO AGREGAR */}
         {mostrarFormulario && (
-          
-
-            
-
-              flight_takeoffNueva ruta
-            
-
-            
-
-              {[
-                { label: 'Origen', key: 'origen', placeholder: 'GYE', upper: true },
-                { label: 'Destino', key: 'destino', placeholder: 'MAD', upper: true },
-              ].map(f => (
-                
-
-                  {f.label}
-                   setNuevoVuelo({ ...nuevoVuelo, [f.key]: f.upper ? e.target.value.toUpperCase() : e.target.value })}
-                    maxLength={3} placeholder={f.placeholder}
-                    className="bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary uppercase h-[46px]" />
-                
-
-              ))}
-              {(['ida', 'vuelta'] as const).map(k => (
-                
-
-                  {k === 'ida' ? 'Mes Ida' : 'Mes Vuelta'}
-                   setNuevoVuelo({ ...nuevoVuelo, [k]: formatDateObj(d, tipoFecha) })}
-                    dateFormat="MM/yyyy" showMonthYearPicker locale={es} wrapperClassName="w-full"
-                    placeholderText="Mes / Año"
-                    className="w-full bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary h-[46px]" />
-                
-
-              ))}
-              
-
-                Días Viaje
-                 setNuevoVuelo({ ...nuevoVuelo, dias_paquete: e.target.value })}
+          <form onSubmit={agregarRuta} className="bg-surface-container-low border border-outline-variant/10 p-6 rounded-2xl mb-10 shadow-xl animate-in fade-in slide-in-from-top-4">
+            <h2 className="text-xl font-bold text-primary flex items-center gap-2 mb-6">
+              <span className="material-symbols-outlined">flight_takeoff</span>Nueva ruta
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+              <div className="flex flex-col">
+                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Origen</label>
+                <input required value={nuevoVuelo.origen}
+                  onChange={e => setNuevoVuelo({ ...nuevoVuelo, origen: e.target.value.toUpperCase() })}
+                  maxLength={3} placeholder="GYE"
+                  className="bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary uppercase h-[46px]" />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Destino</label>
+                <input required value={nuevoVuelo.destino}
+                  onChange={e => setNuevoVuelo({ ...nuevoVuelo, destino: e.target.value.toUpperCase() })}
+                  maxLength={3} placeholder="MAD"
+                  className="bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary uppercase h-[46px]" />
+              </div>
+              <div className="flex flex-col relative">
+                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Mes Ida</label>
+                <DatePicker
+                  selected={parseDateString(nuevoVuelo.ida, tipoFecha)}
+                  onChange={(d: Date | null) => setNuevoVuelo({ ...nuevoVuelo, ida: formatDateObj(d, tipoFecha) })}
+                  dateFormat="MM/yyyy" showMonthYearPicker locale={es} wrapperClassName="w-full"
+                  placeholderText="Mes / Año"
+                  className="w-full bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary h-[46px]" />
+              </div>
+              <div className="flex flex-col relative">
+                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Mes Vuelta</label>
+                <DatePicker
+                  selected={parseDateString(nuevoVuelo.vuelta, tipoFecha)}
+                  onChange={(d: Date | null) => setNuevoVuelo({ ...nuevoVuelo, vuelta: formatDateObj(d, tipoFecha) })}
+                  dateFormat="MM/yyyy" showMonthYearPicker locale={es} wrapperClassName="w-full"
+                  placeholderText="Mes / Año"
+                  className="w-full bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary h-[46px]" />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Días Viaje</label>
+                <input value={nuevoVuelo.dias_paquete}
+                  onChange={e => setNuevoVuelo({ ...nuevoVuelo, dias_paquete: e.target.value })}
                   type="number" placeholder="Ej: 6"
                   className="bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary h-[46px]" />
-              
-
-              
-
-                Alerta $
-                 setNuevoVuelo({ ...nuevoVuelo, alerta: e.target.value })}
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Alerta $</label>
+                <input value={nuevoVuelo.alerta}
+                  onChange={e => setNuevoVuelo({ ...nuevoVuelo, alerta: e.target.value })}
                   type="number" placeholder="Opcional"
                   className="bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg p-3 outline-none focus:border-primary h-[46px]" />
-              
-
-            
-
-            
-
-              
-                saveGuardar Ruta
-              
-            
-
-          
-
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button type="submit" className="bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold px-8 py-3 rounded-lg hover:brightness-110 flex items-center gap-2 transition shadow-md">
+                <span className="material-symbols-outlined">save</span>Guardar Ruta
+              </button>
+            </div>
+          </form>
         )}
 
-        {/* LOADING */}
         {cargando ? (
-          
+          <div className="text-center py-20 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+            <span className="material-symbols-outlined text-6xl text-primary animate-pulse mb-4">cloud_sync</span>
+            <p className="text-primary text-lg font-bold">Cargando precios en tiempo real...</p>
+          </div>
 
-            cloud_sync
-            
-
-Cargando precios en tiempo real...
-
-
-          
-
-
-        /* VISTA COMPARATIVA GYE vs UIO */
         ) : vistaActiva === 'comparativa' ? (
-          
-
+          <div className="space-y-4">
             {Object.entries(rutasPorDestino).map(([destino, rutasDestino]) => {
-              const rutaGYE = rutasDestino.find(r => r.origen === 'GYE');
-              const rutaUIO = rutasDestino.find(r => r.origen === 'UIO');
+              const rutaGYE = rutasDestino.find((r: any) => r.origen === 'GYE');
+              const rutaUIO = rutasDestino.find((r: any) => r.origen === 'UIO');
               const precioGYE = rutaGYE ? getPrecioRuta('GYE', destino) : null;
               const precioUIO = rutaUIO ? getPrecioRuta('UIO', destino) : null;
               if (!rutaGYE && !rutaUIO) return null;
               const masBarato = precioGYE && precioUIO ? (precioGYE.precio <= precioUIO.precio ? 'GYE' : 'UIO') : null;
               return (
-                
-
-                  
-
-                    flight_land
-                    
-{destino} — {getCityName(destino)}
-
-                    {precioGYE?.es_ganga || precioUIO?.es_ganga ? 🚨 GANGA : null}
-                  
-
-                  
-
+                <div key={destino} className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="material-symbols-outlined text-primary">flight_land</span>
+                    <h3 className="text-lg font-bold">{destino} — {getCityName(destino)}</h3>
+                    {(precioGYE?.es_ganga || precioUIO?.es_ganga) && (
+                      <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full text-xs font-bold">🚨 GANGA</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     {[{ origen: 'GYE', precio: precioGYE }, { origen: 'UIO', precio: precioUIO }].map(({ origen, precio }) => (
-                      
-
-                        
-
-{origen} → {destino}
-
-
+                      <div key={origen} className={`p-4 rounded-xl border ${precio?.es_ganga ? 'border-red-500/40 bg-red-500/5' : masBarato === origen ? 'border-green-500/40 bg-green-500/5' : 'border-outline-variant/10 bg-surface-container'}`}>
+                        <p className="text-xs font-bold text-on-surface-variant uppercase mb-2">{origen} → {destino}</p>
                         {precio ? (
                           <>
-                            
-
-
-                              ${precio.precio} USD
-                            
-
-
+                            <p className={`text-2xl font-extrabold ${precio.es_ganga ? 'text-red-400' : masBarato === origen ? 'text-green-400' : 'text-on-background'}`}>
+                              ${precio.precio} <span className="text-sm font-normal text-on-surface-variant">USD</span>
+                            </p>
                             {precio.fecha_vuelo && precio.fecha_vuelo !== 'N/D' && (
-                              
-
-📅 {precio.fecha_vuelo}
-
-
+                              <p className="text-xs text-on-surface-variant mt-1">📅 {precio.fecha_vuelo}</p>
                             )}
-                            {precio.mediana > 0 && 
-
-📊 Prom: ${precio.mediana}
-
-}
-                            {masBarato === origen && 
-
-✅ Más barato
-
-}
-                          
-                        ) : 
-
-Sin datos aún
-
-}
-                      
-
+                            {precio.mediana > 0 && <p className="text-xs text-on-surface-variant">📊 Prom: ${precio.mediana}</p>}
+                            {masBarato === origen && <p className="text-xs text-green-400 font-bold mt-1">✅ Más barato</p>}
+                          </>
+                        ) : (
+                          <p className="text-sm text-on-surface-variant">Sin datos aún</p>
+                        )}
+                      </div>
                     ))}
-                  
-
-                
-
+                  </div>
+                </div>
               );
             })}
-          
+          </div>
 
-
-        /* VISTA TARJETAS */
         ) : rutasFiltradas.length === 0 ? (
-          
-
-            search_off
-            
-
-No se encontraron rutas.
-
-
-          
+          <div className="text-center py-20 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+            <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">search_off</span>
+            <p className="text-on-surface-variant">No se encontraron rutas.</p>
+          </div>
 
         ) : (
-          
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {rutasFiltradas.map(ruta => {
               const precio = getPrecioRuta(ruta.origen, ruta.destino);
               const esGanga = precio?.es_ganga || false;
-              const historialRuta = historial[`${ruta.origen} -> ${ruta.destino}`] || historial[`${ruta.origen} ➡️ ${ruta.destino}`] || [];
+              const claveHistorial1 = `${ruta.origen} -> ${ruta.destino}`;
+              const claveHistorial2 = `${ruta.origen} ➡️ ${ruta.destino}`;
+              const historialRuta = historial[claveHistorial1] || historial[claveHistorial2] || [];
+              const rutaKey = `${ruta.origen}-${ruta.destino}`;
               return (
-                
- setRutaDetalle(rutaDetalle === `${ruta.origen}-${ruta.destino}` ? null : `${ruta.origen}-${ruta.destino}`)}>
+                <div key={ruta.id}
+                  className={`border transition-all rounded-2xl p-6 relative group shadow-sm cursor-pointer ${esGanga ? 'bg-red-950/30 border-red-500/40 hover:border-red-500/60' : 'bg-surface-container-low border-outline-variant/10 hover:border-outline-variant/30'}`}
+                  onClick={() => setRutaDetalle(rutaDetalle === rutaKey ? null : rutaKey)}>
 
                   {esGanga && (
-                    
-
+                    <div className="absolute -top-3 left-6 bg-red-500 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-full shadow animate-pulse">
                       🚨 GANGA
-                    
-
+                    </div>
                   )}
 
-                   { e.stopPropagation(); eliminarRuta(ruta.id); }}
+                  <button onClick={e => { e.stopPropagation(); eliminarRuta(ruta.id); }}
                     className="absolute top-6 right-6 text-outline-variant hover:text-error transition opacity-0 group-hover:opacity-100">
-                    delete
-                  
+                    <span className="material-symbols-outlined">delete</span>
+                  </button>
 
-                  
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${esGanga ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'bg-surface-container-highest border-outline-variant/20 text-primary'}`}>
+                      <span className="material-symbols-outlined font-light text-2xl">flight_takeoff</span>
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold tracking-tight text-on-background flex items-center gap-3">
+                        <div className="flex flex-col items-start leading-none">
+                          <span>{ruta.origen}</span>
+                          <span className="text-[9px] text-on-surface-variant font-medium uppercase tracking-wider mt-1.5">{getCityName(ruta.origen)}</span>
+                        </div>
+                        <span className="text-outline-variant/50 font-light text-xl pb-3">→</span>
+                        <div className="flex flex-col items-start leading-none">
+                          <span>{ruta.destino}</span>
+                          <span className="text-[9px] text-on-surface-variant font-medium uppercase tracking-wider mt-1.5">{getCityName(ruta.destino)}</span>
+                        </div>
+                      </h3>
+                    </div>
+                  </div>
 
-                    
-
-                      flight_takeoff
-                    
-
-                    
-
-                      
-
-                        
-
-                          {ruta.origen}
-                          {getCityName(ruta.origen)}
-                        
-
-                        →
-                        
-
-                          {ruta.destino}
-                          {getCityName(ruta.destino)}
-                        
-
-                      
-
-                    
-
-                  
-
-
-                  {/* PRECIO ACTUAL */}
                   {precio ? (
-                    
-
-                      
-
-                        
-
-                          
-
-Mejor precio actual
-
-
-                          
-
-
-                            ${precio.precio} USD
-                          
-
-
+                    <div className={`p-4 rounded-xl mb-4 ${esGanga ? 'bg-red-500/10 border border-red-500/20' : 'bg-surface-container border border-outline-variant/10'}`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Mejor precio actual</p>
+                          <p className={`text-3xl font-extrabold ${esGanga ? 'text-red-400' : 'text-primary'}`}>
+                            ${precio.precio} <span className="text-sm font-normal text-on-surface-variant">USD</span>
+                          </p>
                           {precio.fecha_vuelo && precio.fecha_vuelo !== 'N/D' && (
-                            
-
-📅 Salida: {precio.fecha_vuelo}
-
-
+                            <p className="text-xs text-on-surface-variant mt-1">📅 Salida: {precio.fecha_vuelo}</p>
                           )}
-                        
-
-                        
-
-                          {precio.mediana > 0 && 
-
-📊 Prom: ${precio.mediana}
-
-}
-                          {precio.precio_alerta > 0 && 
-
-🎯 Alerta: ${precio.precio_alerta}
-
-}
-                          
-
-
+                        </div>
+                        <div className="text-right">
+                          {precio.mediana > 0 && <p className="text-xs text-on-surface-variant">📊 Prom: ${precio.mediana}</p>}
+                          {precio.precio_alerta > 0 && <p className="text-xs text-on-surface-variant">🎯 Alerta: ${precio.precio_alerta}</p>}
+                          <p className="text-[10px] text-on-surface-variant mt-1">
                             {new Date(precio.fecha).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          
-
-
-                        
-
-                      
-
-                    
-
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
-                    
-
-                      
-
-⏳ Esperando primera consulta del bot...
-
-
-                    
-
+                    <div className="p-4 rounded-xl mb-4 bg-surface-container border border-outline-variant/10">
+                      <p className="text-xs text-on-surface-variant">⏳ Esperando primera consulta del bot...</p>
+                    </div>
                   )}
 
-                  {/* MINI HISTORIAL */}
-                  {rutaDetalle === `${ruta.origen}-${ruta.destino}` && historialRuta.length > 1 && (
-                    
- e.stopPropagation()}>
-                      
-
-Historial de precios
-
-
-                      
-
+                  {rutaDetalle === rutaKey && historialRuta.length > 1 && (
+                    <div className="mt-2 p-3 bg-surface-container rounded-xl border border-outline-variant/10" onClick={e => e.stopPropagation()}>
+                      <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-3">Historial de precios</p>
+                      <div className="flex items-end gap-1 h-16">
                         {historialRuta.slice(0, 20).reverse().map((h, i) => {
-                          const maxP = Math.max(...historialRuta.map(x => x.precio));
-                          const minP = Math.min(...historialRuta.map(x => x.precio));
+                          const maxP = Math.max(...historialRuta.map((x: HistorialEntry) => x.precio));
+                          const minP = Math.min(...historialRuta.map((x: HistorialEntry) => x.precio));
                           const rango = maxP - minP || 1;
                           const altura = Math.max(10, Math.round(((h.precio - minP) / rango) * 48) + 8);
                           return (
-                            
-
-                              
-
-                            
-
+                            <div key={i} className="flex flex-col items-center flex-1 gap-1" title={`$${h.precio}`}>
+                              <div className={`w-full rounded-sm ${h.es_ganga ? 'bg-red-400' : 'bg-primary/60'}`} style={{ height: `${altura}px` }}></div>
+                            </div>
                           );
                         })}
-                      
-
-                      
-
-                        Más antiguo
-                        Más reciente
-                      
-
-                      
-
-
-                        Min: ${Math.min(...historialRuta.map(x => x.precio))} | 
-                        Max: ${Math.max(...historialRuta.map(x => x.precio))} | 
+                      </div>
+                      <p className="text-[10px] text-on-surface-variant mt-2 text-center">
+                        Min: <strong>${Math.min(...historialRuta.map((x: HistorialEntry) => x.precio))}</strong> |
+                        Max: <strong>${Math.max(...historialRuta.map((x: HistorialEntry) => x.precio))}</strong> |
                         {historialRuta.length} registros
-                      
-
-
-                    
-
+                      </p>
+                    </div>
                   )}
 
-                  {/* FECHAS Y PAQUETE */}
-                  
-
+                  <div className="grid grid-cols-2 gap-4 bg-surface-container p-4 rounded-xl border border-outline-variant/10 relative mt-2">
                     {ruta.dias_paquete && (
-                      
-
+                      <div className="absolute -top-3 right-4 bg-secondary text-surface-container-lowest text-[10px] uppercase font-bold px-3 py-1 rounded-full shadow-sm">
                         Paquete {ruta.dias_paquete} Días
-                      
-
+                      </div>
                     )}
-                    
-
-                      
-
-Salida / Mes
-
-
-                      
-
-
-                        calendar_today{ruta.ida}
-                      
-
-
-                    
-
-                    
-
-                      
-
-Retorno / Mes
-
-
-                      
-
-
-                        calendar_today{ruta.vuelta}
-                      
-
-
-                    
-
-                  
-
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1 font-bold">Salida / Mes</p>
+                      <p className="font-medium flex items-center gap-1 text-on-surface text-sm">
+                        <span className="material-symbols-outlined text-[16px] text-tertiary">calendar_today</span>{ruta.ida}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1 font-bold">Retorno / Mes</p>
+                      <p className="font-medium flex items-center gap-1 text-on-surface text-sm">
+                        <span className="material-symbols-outlined text-[16px] text-tertiary">calendar_today</span>{ruta.vuelta}
+                      </p>
+                    </div>
+                  </div>
 
                   {precio && historialRuta.length > 1 && (
-                    
-
-
-                      {rutaDetalle === `${ruta.origen}-${ruta.destino}` ? '▲ Ocultar historial' : '▼ Ver historial de precios'}
-                    
-
-
+                    <p className="text-[10px] text-on-surface-variant text-center mt-3">
+                      {rutaDetalle === rutaKey ? '▲ Ocultar historial' : '▼ Ver historial de precios'}
+                    </p>
                   )}
-                
-
+                </div>
               );
             })}
-          
-
+          </div>
         )}
-      
-
-    
-
+      </div>
+    </div>
   );
 }
