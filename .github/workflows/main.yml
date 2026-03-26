@@ -2,12 +2,10 @@ name: Daily Flight Tracker
 
 on:
   schedule:
-    - cron: '48 12 * * *'
-    - cron: '53 15 * * *'
-    - cron: '47 19 * * *'
-    - cron: '54 21 * * *'
-    - cron: '48 01 * * *'
-    - cron: '55 03 * * *'
+    - cron: '47 12 * * *'   # 7:47 AM Ecuador  → GENERAL (llega ~8:00 AM)
+    - cron: '47 15 * * *'   # 10:47 AM Ecuador → SOLO GANGAS (llega ~11:00 AM)
+    - cron: '10 20 * * *'   # 3:10 PM Ecuador  → GENERAL (llega ~3:30 PM)
+    - cron: '45 21 * * *'   # 4:45 PM Ecuador  → SOLO GANGAS (llega ~5:00 PM)
   workflow_dispatch:
 
 jobs:
