@@ -12,26 +12,38 @@ async def guardar_en_supabase(resultados):
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
     if not url or not key:
+        print("⚠️ Supabase no configurado.")
         return
     headers = {
         "apikey": key,
         "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
     }
     datos = []
     for r in resultados:
         datos.append({
             "ruta": r['ruta'],
             "precio": r['precio'],
-            "es_ganga": (r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']),
+            "mediana": r.get('mediana', 0),
+            "fecha_vuelo": r['mejores'][0]['detalle'] if r['mejores'] else "N/D",
+            "precio_alerta": r.get('alerta_manual', 0),
+            "es_ganga": bool(r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']),
             "tipo_vuelo": r['mejores'][0]['tipo'] if r['mejores'][0]['tipo'] else "N/D"
         })
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            await client.post(f"{url}/rest/v1/vuelos_historial", json=datos, headers=headers)
-            print("✅ Supabase actualizado.")
-    except:
-        print("⚠️ Error base de datos.")
+            resp = await client.post(
+                f"{url}/rest/v1/vuelos_historial",
+                json=datos,
+                headers=headers
+            )
+            if resp.status_code in [200, 201]:
+                print(f"✅ Supabase: {len(datos)} registros guardados.")
+            else:
+                print(f"⚠️ Supabase HTTP {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        print(f"❌ Error Supabase: {e}")
 
 async def main():
     print("🚀 Iniciando rastreo inteligente...")
