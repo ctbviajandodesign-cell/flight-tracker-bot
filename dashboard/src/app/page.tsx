@@ -165,6 +165,11 @@ export default function Dashboard() {
                 </span>
               )}
             </p>
+            {Object.values(precios).length > 0 && (
+              <p className="text-on-surface-variant text-xs mt-1">
+                🕐 Última actualización: {new Date(new Date(Object.values(precios)[0].fecha).getTime() - 5 * 60 * 60 * 1000).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
             {errorSync && <p className="text-error mt-2 text-xs font-bold bg-error/10 p-2 rounded">{errorSync}</p>}
           </div>
           <div className="flex flex-col md:flex-row items-center gap-4">
