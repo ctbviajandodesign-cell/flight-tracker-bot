@@ -69,14 +69,11 @@ async def main():
         for i, opc in enumerate(r['mejores']):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
             tipo = "🚀" if opc['tipo'] == "DIR" else "🛬"
-            bloque += f"   {medal} ${opc['precio']} - {tipo}\n"
+            bloque += f"   {medal} <b>${opc['precio']} USD</b> - {opc['detalle']} {tipo}\n"
 
         url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        bloque += f"   📊 Promedio: ${r['mediana']}\n"
+        bloque += f"   📊 Promedio: ${r['mediana']} USD\n"
         bloque += f"   🔗 <a href='{url_l}'>Ver en Google Flights</a>\n\n"
         mensaje += bloque
 
     enviar_notificacion_telegram(mensaje)
-
-if __name__ == "__main__":
-    asyncio.run(main())
