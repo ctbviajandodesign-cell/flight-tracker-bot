@@ -400,7 +400,7 @@ export default function Dashboard() {
                           {precio.mediana > 0 && <p className="text-xs text-on-surface-variant">📊 Prom: ${precio.mediana}</p>}
                           {precio.precio_alerta > 0 && <p className="text-xs text-on-surface-variant">🎯 Alerta: ${precio.precio_alerta}</p>}
                           <p className="text-[10px] text-on-surface-variant mt-1">
-                            {new Date(precio.fecha).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            {new Date(new Date(precio.fecha).getTime() - 5 * 60 * 60 * 1000).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
                       </div>
