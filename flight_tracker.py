@@ -34,22 +34,22 @@ async def guardar_en_supabase(resultados):
             await client.post(f"{url}/rest/v1/vuelos_historial", json=datos, headers=headers)
             print("✅ Historial guardado.")
     except:
-        print("⚠️ Falló base de datos.")
+        print("⚠️ Falló conexión con base de datos.")
 
 async def main():
     print("🚀 Iniciando rastreo...")
     hora_utc = datetime.utcnow().hour
     es_reporte_diario = (hora_utc in [12, 19, 1])
 
-    # Tiempo límite global para todo el proceso: 20 minutos
+    # Tiempo límite global de 20 minutos
     try:
         resultados = await asyncio.wait_for(procesar_rutas(), timeout=1200)
     except:
-        print("❌ El proceso tardó demasiado y fue detenido.")
+        print("❌ Proceso detenido por tiempo excesivo.")
         return
 
     if not resultados:
-        print("No se encontraron resultados.")
+        print("Sin resultados.")
         return
 
     await guardar_en_supabase(resultados)
@@ -57,7 +57,7 @@ async def main():
     vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
 
     if vuelos_ganga:
-        titulo = "🚨 <b>¡GANGAS DETECTADAS!</b>\n"
+        titulo = "🚨 <b>GANGAS!</b>\n"
         vuelos_a_mostrar = resultados if es_reporte_diario else vuelos_ganga
     elif es_reporte_diario:
         titulo = "🌅 <b>REPORTE DIARIO</b>\n"
