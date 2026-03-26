@@ -25,7 +25,6 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
         elementos = soup.find_all(lambda tag: tag.has_attr('aria-label'))
         precios_validos = []
 
-        # Preparar rango de meses para asignar fechas
         f_ini = fecha_inicio.replace("/", "-")
         f_fin = fecha_fin.replace("/", "-")
         try:
@@ -48,16 +47,13 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
         for e in elementos:
             label = e.get('aria-label', '').lower()
 
-            # Detectar precio — Google usa varios formatos:
-            # "$234", "US$234", "234 dólares", "234 dólares estadounidenses"
             tiene_precio = any(x in label for x in [
-                'dólar', 'dolar', 'usd', '$', 'dólares estadounidenses'
+                'dólar', 'dolar', 'dólares', 'usd', '$', 'dólares estadounidenses'
             ])
             if not tiene_precio:
                 continue
 
-            # Extraer el número del precio
-            match = re.search(r'(\d[\d,\.]*)\s*(?:dólar|dolar|dólares|usd)?', label)
+            match = re.search(r'(\d[\d,\.]*)\s*(?:dólar|dolar|dólares|usd)', label)
             if not match:
                 match = re.search(r'(?:us\$|\$)\s*(\d[\d,\.]*)', label)
             if not match:
@@ -72,12 +68,15 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
             if precio <= 10:
                 continue
 
-            # Detectar si es directo o con escala
-            tipo = "DIR" if any(x in label for x in [
-                "sin escala", "sin escalas", "directo", "nonstop", "vuelo directo"
-            ]) else "ESC"
+            # Tipo: solo marcar si hay certeza, sino dejar vacío
+            if any(x in label for x in ["sin escala", "sin escalas", "directo", "nonstop", "vuelo directo"]):
+                tipo = "DIR"
+            elif any(x in label for x in ["escala", "escalas", "parada", "conexión", "con escala"]):
+                tipo = "ESC"
+            else:
+                tipo = ""
 
-            # Intentar extraer fecha del aria-label: "15 de abril de 2026"
+            # Extraer fecha del aria-label
             fecha_corta = "N/D"
             match_fecha = re.search(
                 r'(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?',
@@ -90,7 +89,6 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
                 anio = match_fecha.group(3) if match_fecha.group(3) else (y_ini if meses else "2026")
                 fecha_corta = f"{dia:02d}/{mes_num}/{str(anio)[2:]}"
             elif meses:
-                # Fallback: usar el día del texto del elemento padre
                 parent_text = e.parent.get_text(separator=' ', strip=True) if e.parent else ""
                 match_day = re.search(r'\b(\d{1,2})\b', parent_text)
                 if match_day:
@@ -108,19 +106,17 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
             print(f"  ❌ Sin precios para {destino}")
             return None
 
-        # Ordenar por precio y eliminar duplicados exactos (mismo precio+fecha)
         precios_validos.sort(key=lambda x: x[0])
         vistos = set()
         unicos = []
         for p in precios_validos:
-            clave = (p[0], p[1])  # precio + fecha como clave única
+            clave = (p[0], p[1])
             if clave not in vistos:
                 vistos.add(clave)
                 unicos.append(p)
 
         mejores_3 = unicos[:3]
         mediana = statistics.median([p[0] for p in unicos])
-
         print(f"  💰 {len(unicos)} precios únicos para {destino}. Mejor: ${mejores_3[0][0]} ({mejores_3[0][1]})")
 
         return {
