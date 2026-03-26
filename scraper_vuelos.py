@@ -9,7 +9,6 @@ from io import StringIO
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 
-# User-agents reales rotativos para evitar bloqueos de Google
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -22,32 +21,36 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
     print(f"  ✈️  {origen} ➡️  {destino} | Fechas: {fecha_inicio} → {fecha_fin}")
 
     try:
-        # Simular comportamiento humano antes de navegar
         await page.wait_for_timeout(random.randint(800, 2000))
         await page.goto(url, wait_until="domcontentloaded", timeout=40000)
 
-        # Espera activa: aguardar que aparezcan precios o pasar 12 segundos
         try:
             await page.wait_for_selector('[aria-label*="dólar"], [aria-label*="USD"], [aria-label*="$"]', timeout=12000)
             print(f"  ✅ Precios detectados en página para {destino}")
         except:
-            print(f"  ⚠️  No aparecieron precios en 12s para {destino} — intentando con scroll...")
-            # Scroll para forzar carga lazy
+            print(f"  ⚠️  No aparecieron precios en 12s para {destino} — intentando scroll...")
             await page.evaluate("window.scrollTo(0, 400)")
             await page.wait_for_timeout(3000)
 
         html = await page.content()
+        soup = BeautifulSoup(html, 'html.parser')
 
-        # Verificar si Google bloqueó la sesión
-        if "unusual traffic" in html.lower() or "captcha" in html.lower() or "detected automated" in html.lower():
-            print(f"  🚫 Google bloqueó el acceso para {destino} (captcha/tráfico inusual)")
+        # Verificar bloqueo REAL: solo si hay texto visible de error en h1/h2/p
+        # (Google incluye "captcha" y "unusual traffic" en su JS interno aunque la página esté bien)
+        bloqueado = False
+        for tag in soup.find_all(['h1', 'h2', 'p']):
+            texto = tag.get_text().lower()
+            if 'unusual traffic' in texto or 'not a robot' in texto or 'verify you' in texto:
+                bloqueado = True
+                break
+
+        if bloqueado:
+            print(f"  🚫 Bloqueo real detectado para {destino} (página de verificación visible)")
             return None
 
-        soup = BeautifulSoup(html, 'html.parser')
         elementos = soup.find_all(lambda tag: tag.has_attr('aria-label'))
         precios_validos = []
 
-        # Lógica de fechas
         f_ini = fecha_inicio.replace("/", "-")
         m_ini = int(f_ini.split("-")[1])
         y_ini = f_ini.split("-")[0]
@@ -98,7 +101,7 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
                 "es_ganga_mat": (mejores_3[0][0] <= (mediana * 0.8))
             }
         else:
-            print(f"  ❌ Sin precios válidos para {destino}. La página cargó pero no había datos.")
+            print(f"  ❌ Sin precios válidos para {destino} — página cargó pero sin datos extraíbles.")
             return None
 
     except Exception as e:
@@ -122,7 +125,6 @@ async def procesar_una_ruta(browser, r, semaphore):
         )
         page = await context.new_page()
 
-        # Ocultar que es Playwright
         await page.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
             Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
@@ -186,7 +188,6 @@ async def procesar_rutas():
         print("⚠️ Lista de rutas vacía. Verifica tu Google Sheets.")
         return []
 
-    # Máximo 3 ventanas paralelas para no saturar y evitar bloqueos
     semaphore = asyncio.Semaphore(3)
 
     async with async_playwright() as p:
