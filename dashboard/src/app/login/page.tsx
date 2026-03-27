@@ -45,7 +45,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 bg-primary/15 rounded-2xl flex items-center justify-center">
               <span className="material-symbols-outlined text-primary text-[24px]">travel_explore</span>
             </div>
-            <span className="text-4xl text-on-background" style={{fontFamily:"'Bebas Neue', sans-serif", letterSpacing:'0.02em'}}>MARCKA</span>
+            <span className="text-4xl text-on-background" style={{fontFamily:"'Bebas Neue', sans-serif", letterSpacing:'0.02em'}}>Marcka</span>
           </div>
           <h1 className="text-base font-semibold text-on-surface-variant">Monitor de Vuelos</h1>
           <p className="text-on-surface-variant text-sm mt-1">Ingresa con tu cuenta</p>
