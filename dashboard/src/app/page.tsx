@@ -77,7 +77,7 @@ function MiniSparkline({data,ganga}:{data:HistorialEntry[],ganga:boolean}) {
   return (
     <div className="mt-2">
       <div className="relative">
-        <svg ref={svgRef} width="100%" viewBox={`0 0 ${W} ${H}`} className="overflow-visible cursor-crosshair"
+        <svg ref={svgRef} width="100%" viewBox={`0 0 ${W} ${H}`} className="overflow-visible cursor-crosshair max-w-full"
           onMouseMove={e=>{
             const r=svgRef.current?.getBoundingClientRect();
             if(!r)return;
@@ -327,7 +327,7 @@ export default function Dashboard() {
   const rutasPorDestino=rutas.reduce((acc:Record<string,any[]>,r)=>{(acc[r.destino]=acc[r.destino]||[]).push(r);return acc;},{});
 
   return (
-    <div className="min-h-screen bg-background text-on-background font-sans">
+    <div className="min-h-screen bg-background text-on-background font-sans overflow-x-hidden w-full">
 
       {/* Fondo */}
       <div className="fixed inset-0 pointer-events-none">
@@ -336,8 +336,8 @@ export default function Dashboard() {
       </div>
 
       {/* ── TOP BAR ── */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-outline-variant/15">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-outline-variant/15 w-full">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center gap-2 sm:gap-3 overflow-hidden">
 
           {/* Logo */}
           <div className="flex items-center gap-2 mr-2">
@@ -348,14 +348,14 @@ export default function Dashboard() {
           </div>
 
           {/* Tabs vista */}
-          <div className="flex gap-1 bg-surface-container-low border border-outline-variant/15 rounded-xl p-1">
+          <div className="flex gap-0.5 sm:gap-1 bg-surface-container-low border border-outline-variant/15 rounded-xl p-1 flex-shrink-0">
             {([
               {id:'todas',label:'✈️ Rutas',labelFull:'Todas las rutas'},
               {id:'gangas',label:`🔥 ${totalGangas}`,labelFull:`Gangas (${totalGangas})`},
               {id:'comparativa',label:'⚖️ vs',labelFull:'GYE vs UIO'},
             ] as const).map(t=>(
               <button key={t.id} onClick={()=>setVista(t.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap
+                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap
                   ${vista===t.id?'bg-primary text-white shadow-sm':'text-on-surface-variant hover:text-on-surface'}`}>
                 <span className="sm:hidden">{t.label}</span>
                 <span className="hidden sm:block">{t.labelFull}</span>
@@ -371,7 +371,7 @@ export default function Dashboard() {
               className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-1.5 pl-8 pr-3 text-xs outline-none focus:border-primary transition"/>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto flex-shrink-0">
             {/* Info badges */}
             {ultimaAct&&<FreshBadge fecha={ultimaAct}/>}
 
@@ -413,7 +413,7 @@ export default function Dashboard() {
       {/* ── FORMULARIO ── */}
       {mostrarForm&&(
         <div className="border-b border-outline-variant/15 bg-surface-container-low">
-          <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4">
             <form onSubmit={agregar}>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {[{l:'Origen',k:'origen',ph:'GYE'},{l:'Destino',k:'destino',ph:'MAD'}].map(f=>(
@@ -459,7 +459,7 @@ export default function Dashboard() {
       )}
 
       {/* ── LAYOUT PRINCIPAL ── */}
-      <div className="max-w-7xl mx-auto px-4 py-5 flex gap-5 relative z-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-5 flex gap-0 md:gap-5 relative z-10">
 
         {/* ── SIDEBAR DESKTOP ── */}
         <aside className="hidden md:block w-52 flex-shrink-0">
@@ -591,7 +591,7 @@ export default function Dashboard() {
         )}
 
         {/* ── CONTENIDO ── */}
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 w-full overflow-hidden">
           {cargando?(
             <div className="flex flex-col items-center justify-center py-32 gap-3">
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"/>
@@ -615,7 +615,7 @@ export default function Dashboard() {
                       </div>
                       {hayGanga&&<span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">🔥 GANGA</span>}
                     </div>
-                    <div className="grid grid-cols-2 divide-x divide-outline-variant/10">
+                    <div className="grid grid-cols-2 divide-x divide-outline-variant/10 w-full">
                       {[{org:'GYE',p:pGYE},{org:'UIO',p:pUIO}].map(({org,p})=>(
                         <div key={org} className={`p-3 ${barato===org&&p?'bg-emerald-500/5':''}`}>
                           <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">{org} → {dest}</p>
@@ -655,7 +655,7 @@ export default function Dashboard() {
             </div>
 
           ):(
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 w-full">
               {rutasFiltradas.map(ruta=>{
                 const p=getPrecio(ruta.origen,ruta.destino);
                 const h=getHist(ruta.origen,ruta.destino);
