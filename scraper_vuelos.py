@@ -165,7 +165,8 @@ async def procesar_rutas():
                     "destino": row["DESTINO"],
                     "inicio": row["MES DE INICIO"].replace("/", "-"),
                     "fin": row["MES DE FIN"].replace("/", "-"),
-                    "alerta": int(row.get("PRECIO ALERTA", 0))
+                    "alerta": int(row.get("PRECIO ALERTA", 0)),
+                "pais_destino": row.get("PAIS_DESTINO", "")
                 })
     except Exception as e:
         print(f"❌ Error cargando rutas: {e}")
