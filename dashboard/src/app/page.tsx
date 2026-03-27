@@ -256,6 +256,7 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [nuevoVuelo, setNuevoVuelo] = useState({origen:'',destino:'',ida:'',vuelta:'',alerta:'',dias_paquete:''});
+  const [tipoFecha, setTipoFecha] = useState<'mes'|'exacta'>('mes');
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -413,6 +414,17 @@ export default function Dashboard() {
         <div className="border-b border-outline-variant/15 bg-surface-container-low">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4">
             <form onSubmit={agregar}>
+              {/* Toggle mes / día exacto */}
+              <div className="flex gap-1 bg-surface-container border border-outline-variant/20 rounded-xl p-1 w-fit mb-3">
+                <button type="button" onClick={()=>setTipoFecha('mes')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoFecha==='mes'?'bg-primary text-white':'text-on-surface-variant hover:text-on-surface'}`}>
+                  📅 Mes entero
+                </button>
+                <button type="button" onClick={()=>setTipoFecha('exacta')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoFecha==='exacta'?'bg-primary text-white':'text-on-surface-variant hover:text-on-surface'}`}>
+                  🗓️ Día exacto
+                </button>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {[{l:'Origen',k:'origen',ph:'GYE'},{l:'Destino',k:'destino',ph:'MAD'}].map(f=>(
                   <div key={f.k}>
@@ -425,11 +437,17 @@ export default function Dashboard() {
                 ))}
                 {(['ida','vuelta'] as const).map(k=>(
                   <div key={k}>
-                    <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">{k==='ida'?'Mes ida':'Mes vuelta'}</label>
-                    <DatePicker selected={parseFecha((nuevoVuelo as any)[k])}
-                      onChange={(d:Date|null)=>setNuevoVuelo({...nuevoVuelo,[k]:fmtFecha(d,'mes')})}
-                      dateFormat="MM/yyyy" showMonthYearPicker locale={es} wrapperClassName="w-full"
-                      placeholderText="MM/YYYY"
+                    <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">
+                      {k==='ida'?'Fecha ida':'Fecha vuelta'}
+                    </label>
+                    <DatePicker
+                      selected={parseFecha((nuevoVuelo as any)[k])}
+                      onChange={(d:Date|null)=>setNuevoVuelo({...nuevoVuelo,[k]:fmtFecha(d,tipoFecha)})}
+                      dateFormat={tipoFecha==='mes'?'MM/yyyy':'dd/MM/yyyy'}
+                      showMonthYearPicker={tipoFecha==='mes'}
+                      locale={es}
+                      wrapperClassName="w-full"
+                      placeholderText={tipoFecha==='mes'?'MM/YYYY':'DD/MM/YYYY'}
                       className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-2.5 py-2 text-xs outline-none focus:border-primary h-[38px]"/>
                   </div>
                 ))}
