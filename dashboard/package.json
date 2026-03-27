@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
     "@types/react-datepicker": "^6.2.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.38.0",
