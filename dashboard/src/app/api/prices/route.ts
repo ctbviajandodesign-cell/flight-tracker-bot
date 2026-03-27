@@ -4,6 +4,14 @@ export const dynamic = 'force-dynamic';
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_KEY!;
 
+// Normaliza el nombre de la ruta — siempre "GYE -> PTY"
+function normalizarRuta(ruta: string): string {
+  return ruta
+    .replace(/\s*➡️\s*/g, ' -> ')
+    .replace(/\s*→\s*/g, ' -> ')
+    .trim();
+}
+
 export async function GET() {
   try {
     if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -21,21 +29,27 @@ export async function GET() {
       }
     );
 
-    if (!res.ok) {
-      throw new Error(`Supabase error: ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
 
     const data: any[] = await res.json();
 
+    // Normalizar ruta en cada registro
+    const dataNorm = data.map(row => ({
+      ...row,
+      ruta: normalizarRuta(row.ruta)
+    }));
+
+    // Último registro por ruta (ya ordenado desc por fecha)
     const ultimoPorRuta: Record<string, any> = {};
-    for (const row of data) {
+    for (const row of dataNorm) {
       if (!ultimoPorRuta[row.ruta]) {
         ultimoPorRuta[row.ruta] = row;
       }
     }
 
+    // Historial por ruta (últimos 30)
     const historialPorRuta: Record<string, any[]> = {};
-    for (const row of data) {
+    for (const row of dataNorm) {
       if (!historialPorRuta[row.ruta]) historialPorRuta[row.ruta] = [];
       if (historialPorRuta[row.ruta].length < 30) {
         historialPorRuta[row.ruta].push({
