@@ -61,11 +61,10 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-primary/15 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-primary text-[32px]">travel_explore</span>
-          </div>
+          <img src="/logo_marcka.svg" alt="Marcka" className="h-8 w-auto mx-auto mb-4 hidden dark:block" style={{filter:'brightness(0) invert(1)'}}/>
+          <img src="/logo_marcka.svg" alt="Marcka" className="h-8 w-auto mx-auto mb-4 dark:hidden"/>
           <h1 className="text-2xl font-black text-on-background">
-            Monitor de Vuelos <span className="text-primary">CTB</span>
+            Monitor de Vuelos
           </h1>
           <p className="text-on-surface-variant text-sm mt-1">Ingresa con tu cuenta</p>
         </div>
