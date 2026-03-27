@@ -103,7 +103,7 @@ function MiniSparkline({data,ganga}:{data:HistorialEntry[],ganga:boolean}) {
         </svg>
         {tipPt&&(
           <div className="absolute z-30 pointer-events-none bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-2.5 py-1.5 shadow-xl text-xs"
-            style={{left:tipPt.x>160?'auto':'auto',bottom:'110%',transform:'translateX(-50%)',left:`${(tipPt.x/W)*100}%`}}>
+            style={{bottom:'110%',transform:'translateX(-50%)',left:`${(tipPt.x/W)*100}%`}}>
             <p className="font-black text-on-background">${tipPt.precio.toLocaleString()}</p>
             <p className="text-on-surface-variant text-[10px]">{fmtEC(tipPt.fecha)}</p>
             {tipPt.es_ganga&&<p className="text-amber-500 text-[10px]">🔥 ganga</p>}
