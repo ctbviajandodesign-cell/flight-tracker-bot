@@ -147,39 +147,79 @@ function Sparkline({data, ganga}:{data:HistorialEntry[], ganga:boolean}) {
   );
 }
 
-function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete}:{
+function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete,editing,editData,onEdit,onSave,onEditChange}:{
   ruta:any; precio:PrecioData|null; hist:HistorialEntry[];
   expanded:boolean; onExpand:()=>void; onDelete:()=>void;
+  editing:boolean; editData:any; onEdit:()=>void;
+  onSave:()=>void; onEditChange:(k:string,v:string)=>void;
 }) {
   const ganga = precio?.es_ganga||false;
+  const val = (k:string) => editData[k]!==undefined ? editData[k] : ruta[k]||'';
   return (
-    <div onClick={onExpand}
-      className={`relative rounded-2xl border transition-all duration-200 cursor-pointer group overflow-hidden
-        ${ganga
-          ?'border-amber-500/30 bg-surface-container-low hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/8'
-          :'border-outline-variant/15 bg-surface-container-low hover:border-primary/25 hover:shadow-lg'
+    <div onClick={!editing?onExpand:undefined}
+      className={`relative rounded-2xl border transition-all duration-200 overflow-hidden group
+        ${editing?'border-primary/50 bg-surface-container-low shadow-lg cursor-default':
+          ganga?'border-amber-500/30 bg-surface-container-low hover:border-amber-500/50 hover:shadow-lg cursor-pointer':
+          'border-outline-variant/15 bg-surface-container-low hover:border-primary/25 hover:shadow-lg cursor-pointer'
         }`}>
-      {ganga&&<div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-amber-400 to-orange-400"/>}
+      {ganga&&!editing&&<div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-amber-400 to-orange-400"/>}
+      {editing&&<div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-primary to-primary/50"/>}
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${ganga?'bg-amber-500/15':'bg-primary/10'}`}>
-              <span className={`material-symbols-outlined text-[16px] ${ganga?'text-amber-700 dark:text-amber-400':'text-primary'}`}>flight_takeoff</span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${editing?'bg-primary/15':ganga?'bg-amber-500/15':'bg-primary/10'}`}>
+              <span className={`material-symbols-outlined text-[16px] ${editing?'text-primary':ganga?'text-amber-700 dark:text-amber-400':'text-primary'}`}>
+                {editing?'edit':'flight_takeoff'}
+              </span>
             </div>
             <div>
-              <div className="flex items-center gap-1.5 font-black text-sm">
-                <span>{ruta.origen}</span>
-                <span className="text-on-surface-variant/30 font-light">→</span>
-                <span>{ruta.destino}</span>
-                {ganga&&<span className="text-[9px] font-black text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">🔥</span>}
-              </div>
-              <p className="text-[10px] text-on-surface-variant">{getCityName(ruta.origen)} → {getCityName(ruta.destino)}</p>
+              {editing?(
+                <div className="flex items-center gap-1.5">
+                  <input value={val('origen')} onChange={e=>onEditChange('origen',e.target.value.toUpperCase())}
+                    maxLength={3} className="w-14 bg-surface-container border border-primary/30 rounded-lg px-2 py-1 text-sm font-black uppercase outline-none focus:border-primary text-center"/>
+                  <span className="text-on-surface-variant/30">→</span>
+                  <input value={val('destino')} onChange={e=>onEditChange('destino',e.target.value.toUpperCase())}
+                    maxLength={3} className="w-14 bg-surface-container border border-primary/30 rounded-lg px-2 py-1 text-sm font-black uppercase outline-none focus:border-primary text-center"/>
+                </div>
+              ):(
+                <div className="flex items-center gap-1.5 font-black text-sm">
+                  <span>{ruta.origen}</span>
+                  <span className="text-on-surface-variant/30 font-light">→</span>
+                  <span>{ruta.destino}</span>
+                  {ganga&&<span className="text-[9px] font-black text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">🔥</span>}
+                </div>
+              )}
+              <p className="text-[10px] text-on-surface-variant">
+                {getCityName(editing?val('origen'):ruta.origen)} → {getCityName(editing?val('destino'):ruta.destino)}
+                {ruta.pais_destino&&<span className="ml-1 text-on-surface-variant/50">· {ruta.pais_destino}</span>}
+              </p>
             </div>
           </div>
-          <button onClick={e=>{e.stopPropagation();onDelete();}}
-            className="opacity-0 group-hover:opacity-100 text-on-surface-variant/30 hover:text-rose-400 transition p-1 rounded-lg hover:bg-rose-500/10">
-            <span className="material-symbols-outlined text-[14px]">delete</span>
-          </button>
+          <div className="flex items-center gap-1">
+            {editing?(
+              <>
+                <button onClick={e=>{e.stopPropagation();onSave();}}
+                  className="p-1.5 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition">
+                  <span className="material-symbols-outlined text-[14px]">check</span>
+                </button>
+                <button onClick={e=>{e.stopPropagation();onEdit();}}
+                  className="p-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-highest transition">
+                  <span className="material-symbols-outlined text-[14px]">close</span>
+                </button>
+              </>
+            ):(
+              <>
+                <button onClick={e=>{e.stopPropagation();onEdit();}}
+                  className="opacity-0 group-hover:opacity-100 text-on-surface-variant/30 hover:text-primary transition p-1 rounded-lg hover:bg-primary/10">
+                  <span className="material-symbols-outlined text-[14px]">edit</span>
+                </button>
+                <button onClick={e=>{e.stopPropagation();onDelete();}}
+                  className="opacity-0 group-hover:opacity-100 text-on-surface-variant/30 hover:text-rose-400 transition p-1 rounded-lg hover:bg-rose-500/10">
+                  <span className="material-symbols-outlined text-[14px]">delete</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {precio?(
@@ -198,7 +238,16 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete}:{
                 )}
               </div>
               <div className="text-right space-y-0.5">
-                {precio.precio_alerta>0&&<p className="text-[10px] text-on-surface-variant">🎯 ${precio.precio_alerta}</p>}
+                {editing?(
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-on-surface-variant">🎯 $</span>
+                <input value={val('alerta')} onChange={e=>onEditChange('alerta',e.target.value)}
+                  type="number" placeholder="0"
+                  className="w-16 bg-transparent border-b border-primary/40 text-[10px] outline-none focus:border-primary"/>
+              </div>
+            ):(
+              precio.precio_alerta>0&&<p className="text-[10px] text-on-surface-variant">🎯 \${precio.precio_alerta}</p>
+            )}
                 {precio.mediana>0&&<p className="text-[10px] text-on-surface-variant">≈ ${precio.mediana}</p>}
               </div>
             </div>
@@ -226,10 +275,16 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete}:{
         )}
 
         <div className="grid grid-cols-2 gap-1.5 mb-2">
-          {[{l:'Salida',v:ruta.ida},{l:'Retorno',v:ruta.vuelta}].map(f=>(
+          {[{l:'Salida',k:'ida'},{l:'Retorno',k:'vuelta'}].map(f=>(
             <div key={f.l} className="bg-surface-container rounded-lg px-2.5 py-1.5">
               <p className="text-[9px] uppercase tracking-wider text-on-surface-variant font-bold">{f.l}</p>
-              <p className="text-xs font-semibold">{f.v||'—'}</p>
+              {editing?(
+                <input value={val(f.k)} onChange={e=>onEditChange(f.k,e.target.value)}
+                  placeholder="2026-04"
+                  className="w-full bg-transparent border-b border-primary/40 text-xs font-semibold outline-none py-0.5 focus:border-primary"/>
+              ):(
+                <p className="text-xs font-semibold">{ruta[f.k]||'—'}</p>
+              )}
             </div>
           ))}
         </div>
@@ -315,12 +370,27 @@ export default function Dashboard() {
   const [filtroOrigen, setFiltroOrigen] = useState<string|null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [expandido, setExpandido] = useState<string|null>(null);
+  const [editando, setEditando] = useState<string|null>(null);
+  const [editData, setEditData] = useState<any>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [nuevoVuelo, setNuevoVuelo] = useState({origen:'',destino:'',ida:'',vuelta:'',alerta:'',dias_paquete:'',pais_destino:''});
   const [tipoFecha, setTipoFecha] = useState<'mes'|'exacta'>('mes');
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
+  const guardarEdicion = async (ruta: any) => {
+    const updated = { ...ruta, ...editData };
+    setRutas(rutas.map(r => r.id === ruta.id ? updated : r));
+    setEditando(null);
+    setEditData({});
+    await fetch('/api/flights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...updated, _update: true }),
+    });
+    cargar();
+  };
 
   const cargar = async () => {
     try {
@@ -716,7 +786,12 @@ export default function Dashboard() {
                   <RutaCard key={ruta.id} ruta={ruta} precio={p} hist={h}
                     expanded={expandido===key}
                     onExpand={()=>setExpandido(expandido===key?null:key)}
-                    onDelete={()=>eliminar(ruta.id)}/>
+                    onDelete={()=>eliminar(ruta.id)}
+                    editing={editando===key}
+                    editData={editando===key?editData:{}}
+                    onEdit={()=>{setEditando(editando===key?null:key);setEditData({});}}
+                    onSave={()=>guardarEdicion(ruta)}
+                    onEditChange={(k,v)=>setEditData((prev:any)=>({...prev,[k]:v}))}/>
                 );
               })}
             </div>
