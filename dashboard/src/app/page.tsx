@@ -185,8 +185,8 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete}:{
                   rel="noopener noreferrer"
                   onClick={e=>e.stopPropagation()}
                   onTouchEnd={e=>e.stopPropagation()}
-                  className="flex items-center gap-1 text-[11px] text-on-surface-variant hover:text-primary transition underline underline-offset-2 decoration-dotted">
-                  <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+                  className="flex items-center gap-0.5 text-[10px] text-on-surface-variant hover:text-primary transition underline underline-offset-2 decoration-dotted">
+                  <span className="material-symbols-outlined text-[10px]">open_in_new</span>
                   Ver en Google Flights
                 </a>
               )}
