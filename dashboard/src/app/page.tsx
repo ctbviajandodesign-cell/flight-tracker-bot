@@ -117,6 +117,49 @@ function MiniSparkline({data,ganga}:{data:HistorialEntry[],ganga:boolean}) {
         </span>
         <span className="text-[9px] text-on-surface-variant/50">${mx.toLocaleString()}</span>
       </div>
+      {/* ── BARRA NAVEGACIÓN INFERIOR — solo móvil ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-xl border-t border-outline-variant/15">
+        <div className="flex items-stretch h-16 px-2">
+          {([
+            {id:'todas', icon:'flight', label:'Rutas'},
+            {id:'gangas', icon:'local_fire_department', label:`Gangas${totalGangas>0?' ('+totalGangas+')':''}`, badge:totalGangas},
+            {id:'comparativa', icon:'compare_arrows', label:'GYE vs UIO'},
+            {id:'filtros', icon:'tune', label:'Filtros'},
+          ] as const).map(t=>(
+            <button key={t.id}
+              onClick={()=>{
+                if(t.id==='filtros'){setSidebarOpen(!sidebarOpen);}
+                else{setVista(t.id as any);}
+              }}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-all
+                ${(t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen)
+                  ?'text-primary'
+                  :'text-on-surface-variant'
+                }`}>
+              {/* Badge gangas */}
+              {t.id==='gangas'&&totalGangas>0&&(
+                <span className="absolute top-2 right-[calc(50%-16px)] w-4 h-4 bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                  {totalGangas}
+                </span>
+              )}
+              <span className="material-symbols-outlined text-[22px]">{t.icon}</span>
+              <span className="text-[10px] font-semibold leading-none">
+                {t.id==='gangas'?'Gangas':t.label}
+              </span>
+              {/* Indicador activo */}
+              {((t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen))&&(
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"/>
+              )}
+            </button>
+          ))}
+        </div>
+        {/* Safe area iOS */}
+        <div className="h-safe-bottom bg-background/95" style={{height:'env(safe-area-inset-bottom)'}}/>
+      </nav>
+
+      {/* Espaciado para barra inferior en móvil */}
+      <div className="h-16 md:hidden"/>
+
     </div>
   );
 }
@@ -237,6 +280,49 @@ function RutaCard({ruta,precio,hRuta,onDelete,expanded,onExpand}:{
           </p>
         )}
       </div>
+      {/* ── BARRA NAVEGACIÓN INFERIOR — solo móvil ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-xl border-t border-outline-variant/15">
+        <div className="flex items-stretch h-16 px-2">
+          {([
+            {id:'todas', icon:'flight', label:'Rutas'},
+            {id:'gangas', icon:'local_fire_department', label:`Gangas${totalGangas>0?' ('+totalGangas+')':''}`, badge:totalGangas},
+            {id:'comparativa', icon:'compare_arrows', label:'GYE vs UIO'},
+            {id:'filtros', icon:'tune', label:'Filtros'},
+          ] as const).map(t=>(
+            <button key={t.id}
+              onClick={()=>{
+                if(t.id==='filtros'){setSidebarOpen(!sidebarOpen);}
+                else{setVista(t.id as any);}
+              }}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-all
+                ${(t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen)
+                  ?'text-primary'
+                  :'text-on-surface-variant'
+                }`}>
+              {/* Badge gangas */}
+              {t.id==='gangas'&&totalGangas>0&&(
+                <span className="absolute top-2 right-[calc(50%-16px)] w-4 h-4 bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                  {totalGangas}
+                </span>
+              )}
+              <span className="material-symbols-outlined text-[22px]">{t.icon}</span>
+              <span className="text-[10px] font-semibold leading-none">
+                {t.id==='gangas'?'Gangas':t.label}
+              </span>
+              {/* Indicador activo */}
+              {((t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen))&&(
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"/>
+              )}
+            </button>
+          ))}
+        </div>
+        {/* Safe area iOS */}
+        <div className="h-safe-bottom bg-background/95" style={{height:'env(safe-area-inset-bottom)'}}/>
+      </nav>
+
+      {/* Espaciado para barra inferior en móvil */}
+      <div className="h-16 md:hidden"/>
+
     </div>
   );
 }
@@ -336,92 +422,77 @@ export default function Dashboard() {
       </div>
 
       {/* ── TOP BAR ── */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-outline-variant/15 w-full">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6">
+      {/* ── TOP BAR — limpio y simple ── */}
+      <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-outline-variant/15 w-full">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
 
-          {/* ── FILA ÚNICA ADAPTABLE ── */}
-          <div className="flex items-center h-13 py-2 gap-2">
-
-            {/* Logo — siempre visible */}
-            <div className="w-7 h-7 bg-primary/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-primary text-[16px]">travel_explore</span>
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary/15 rounded-xl flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-primary text-[18px]">travel_explore</span>
             </div>
-            <span className="font-black text-sm hidden lg:block mr-1">Monitor <span className="text-primary">CTB</span></span>
-
-            {/* Tabs — siempre visibles, texto corto en móvil */}
-            <div className="flex bg-surface-container-low border border-outline-variant/15 rounded-xl p-1 flex-shrink-0">
-              {([
-                {id:'todas', mob:'✈️', full:'✈️ Rutas'},
-                {id:'gangas', mob:`🔥 ${totalGangas}`, full:`🔥 Gangas`},
-                {id:'comparativa', mob:'⚖️', full:'⚖️ vs'},
-              ] as const).map(t=>(
-                <button key={t.id} onClick={()=>setVista(t.id as any)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap
-                    ${vista===t.id?'bg-primary text-white shadow-sm':'text-on-surface-variant hover:text-on-surface'}`}>
-                  <span className="sm:hidden">{t.mob}</span>
-                  <span className="hidden sm:block">{t.full}</span>
-                </button>
-              ))}
+            <div>
+              <p className="font-black text-sm leading-none">Monitor <span className="text-primary">CTB</span></p>
+              <p className="text-[10px] text-on-surface-variant leading-none mt-0.5 hidden sm:block">Rastreo de tarifas</p>
             </div>
+          </div>
 
-            {/* Buscador — flexible, se achica en móvil */}
-            <div className="relative flex-1 min-w-0 max-w-xs">
-              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[15px]">search</span>
-              <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
-                placeholder="Buscar..."
-                className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-1.5 pl-8 pr-2 text-xs outline-none focus:border-primary transition"/>
-            </div>
+          {/* Buscador — flexible */}
+          <div className="relative flex-1 max-w-sm mx-auto hidden sm:block">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">search</span>
+            <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+              placeholder="Buscar destino o ciudad..."
+              className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 pl-9 pr-3 text-xs outline-none focus:border-primary transition"/>
+          </div>
 
-            {/* Acciones — agrupadas a la derecha */}
-            <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Badge actualización */}
+            {ultimaAct&&<FreshBadge fecha={ultimaAct}/>}
 
-              {/* Badge fresco — solo md+ */}
-              {ultimaAct&&(
-                <span className="hidden md:flex">
-                  <FreshBadge fecha={ultimaAct}/>
-                </span>
-              )}
+            {/* Refresh */}
+            <button onClick={cargar} title="Actualizar"
+              className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:text-primary transition">
+              <span className="material-symbols-outlined text-[18px]">refresh</span>
+            </button>
 
-              {/* Filtros — solo móvil */}
-              <button onClick={()=>setSidebarOpen(!sidebarOpen)}
-                title="Filtros"
-                className={`md:hidden p-2 rounded-xl border transition
-                  ${sidebarOpen?'bg-primary/15 border-primary/30 text-primary':'bg-surface-container-low border-outline-variant/20 text-on-surface-variant'}`}>
-                <span className="material-symbols-outlined text-[18px]">tune</span>
-              </button>
+            {/* Theme */}
+            {mounted&&(
+              <div className="hidden sm:flex bg-surface-container-low border border-outline-variant/20 rounded-xl p-0.5">
+                {(['light','dark','system'] as const).map(t=>(
+                  <button key={t} onClick={()=>setTheme(t)} title={t}
+                    className={`p-1.5 rounded-lg transition ${theme===t?'bg-primary/15 text-primary':'text-on-surface-variant hover:text-on-surface'}`}>
+                    <span className="material-symbols-outlined text-[15px]">
+                      {t==='light'?'light_mode':t==='dark'?'dark_mode':'desktop_windows'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
-              {/* Refresh */}
-              <button onClick={cargar} title="Actualizar"
-                className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:text-primary transition">
-                <span className="material-symbols-outlined text-[18px]">refresh</span>
-              </button>
-
-              {/* Theme — solo sm+ */}
-              {mounted&&(
-                <div className="hidden sm:flex bg-surface-container-low border border-outline-variant/20 rounded-xl p-0.5">
-                  {(['light','dark','system'] as const).map(t=>(
-                    <button key={t} onClick={()=>setTheme(t)} title={t}
-                      className={`p-1.5 rounded-lg transition ${theme===t?'bg-primary/15 text-primary':'text-on-surface-variant hover:text-on-surface'}`}>
-                      <span className="material-symbols-outlined text-[15px]">
-                        {t==='light'?'light_mode':t==='dark'?'dark_mode':'desktop_windows'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Nueva ruta — ícono en móvil, texto en desktop */}
-              <button onClick={()=>setMostrarForm(!mostrarForm)}
-                className="flex items-center gap-1.5 bg-primary text-white font-bold px-3 py-2 rounded-xl text-xs hover:bg-primary/90 transition shadow-md shadow-primary/20">
-                <span className="material-symbols-outlined text-[16px]">{mostrarForm?'close':'add'}</span>
-                <span className="hidden sm:block">{mostrarForm?'Cancelar':'Nueva Ruta'}</span>
-              </button>
-            </div>
+            {/* Nueva ruta */}
+            <button onClick={()=>setMostrarForm(!mostrarForm)}
+              className="flex items-center gap-1.5 bg-primary text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-primary/90 transition shadow-md shadow-primary/20">
+              <span className="material-symbols-outlined text-[18px]">{mostrarForm?'close':'add'}</span>
+              <span className="hidden sm:block">{mostrarForm?'Cancelar':'Nueva Ruta'}</span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* ── FORMULARIO ── */}
+      {/* Buscador móvil — solo visible en sm */}
+      <div className="sm:hidden px-3 py-2 border-b border-outline-variant/10">
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">search</span>
+          <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+            placeholder="Buscar destino o ciudad..."
+            className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary transition"/>
+          {busqueda&&<button onClick={()=>setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
+            <span className="material-symbols-outlined text-[16px]">close</span>
+          </button>}
+        </div>
+      </div>
+
       {mostrarForm&&(
         <div className="border-b border-outline-variant/15 bg-surface-container-low">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4">
@@ -682,6 +753,49 @@ export default function Dashboard() {
           )}
         </main>
       </div>
+      {/* ── BARRA NAVEGACIÓN INFERIOR — solo móvil ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-xl border-t border-outline-variant/15">
+        <div className="flex items-stretch h-16 px-2">
+          {([
+            {id:'todas', icon:'flight', label:'Rutas'},
+            {id:'gangas', icon:'local_fire_department', label:`Gangas${totalGangas>0?' ('+totalGangas+')':''}`, badge:totalGangas},
+            {id:'comparativa', icon:'compare_arrows', label:'GYE vs UIO'},
+            {id:'filtros', icon:'tune', label:'Filtros'},
+          ] as const).map(t=>(
+            <button key={t.id}
+              onClick={()=>{
+                if(t.id==='filtros'){setSidebarOpen(!sidebarOpen);}
+                else{setVista(t.id as any);}
+              }}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-all
+                ${(t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen)
+                  ?'text-primary'
+                  :'text-on-surface-variant'
+                }`}>
+              {/* Badge gangas */}
+              {t.id==='gangas'&&totalGangas>0&&(
+                <span className="absolute top-2 right-[calc(50%-16px)] w-4 h-4 bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                  {totalGangas}
+                </span>
+              )}
+              <span className="material-symbols-outlined text-[22px]">{t.icon}</span>
+              <span className="text-[10px] font-semibold leading-none">
+                {t.id==='gangas'?'Gangas':t.label}
+              </span>
+              {/* Indicador activo */}
+              {((t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen))&&(
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"/>
+              )}
+            </button>
+          ))}
+        </div>
+        {/* Safe area iOS */}
+        <div className="h-safe-bottom bg-background/95" style={{height:'env(safe-area-inset-bottom)'}}/>
+      </nav>
+
+      {/* Espaciado para barra inferior en móvil */}
+      <div className="h-16 md:hidden"/>
+
     </div>
   );
 }
