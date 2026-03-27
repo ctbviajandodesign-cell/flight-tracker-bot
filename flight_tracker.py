@@ -58,7 +58,7 @@ async def main():
     # 15 UTC = 10:47 AM Ecuador → SOLO GANGAS
     # 20 UTC = 3:10 PM Ecuador  → GENERAL
     # 21 UTC = 4:45 PM Ecuador  → SOLO GANGAS
-    es_reporte_diario = (hora_utc in [12, 20])
+    es_reporte_diario = (hora_utc in [12, 13, 20, 21])
 
     try:
         resultados = await asyncio.wait_for(procesar_rutas(), timeout=2400)
