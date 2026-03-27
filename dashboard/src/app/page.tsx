@@ -178,11 +178,16 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete}:{
             <Sparkline data={hist} ganga={ganga}/>
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-outline-variant/10">
               <FreshBadge fecha={precio.fecha}/>
-              {precio.url_vuelo&&(
-                <a href={precio.url_vuelo} target="_blank" rel="noopener noreferrer"
+              {(precio.url_vuelo||ruta.origen)&&(
+                <a
+                  href={precio.url_vuelo||`https://www.google.com/travel/flights?q=Flights+to+${ruta.destino}+from+${ruta.origen}&hl=es-419&curr=USD`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   onClick={e=>e.stopPropagation()}
-                  className="text-[10px] text-on-surface-variant/40 hover:text-primary flex items-center gap-0.5 transition">
-                  <span className="material-symbols-outlined text-[11px]">open_in_new</span>Flights
+                  onTouchEnd={e=>e.stopPropagation()}
+                  className="flex items-center gap-1 text-[11px] text-on-surface-variant hover:text-primary transition underline underline-offset-2 decoration-dotted">
+                  <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+                  Ver en Google Flights
                 </a>
               )}
             </div>
