@@ -45,10 +45,9 @@ export default function LoginPage() {
             <div className="w-10 h-10 bg-primary/15 rounded-2xl flex items-center justify-center">
               <span className="material-symbols-outlined text-primary text-[24px]">travel_explore</span>
             </div>
-            <span className="text-2xl text-on-background" style={{fontFamily:"'Arial Black', sans-serif", letterSpacing:'0.02em'}}>Marcka</span>
+            <span className="text-1xl text-on-background" style={{fontFamily:"'Arial Black', sans-serif", letterSpacing:'0.02em'}}>Marcka</span>
           </div>
           <h1 className="text-base font-semibold text-on-surface-variant">Monitor de Vuelos</h1>
-          <p className="text-on-surface-variant text-sm mt-1">Ingresa con tu cuenta</p>
         </div>
         <div className="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-6 shadow-xl">
           <form onSubmit={handleLogin} className="space-y-4">
