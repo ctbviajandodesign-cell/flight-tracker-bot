@@ -242,6 +242,41 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete}:{
   );
 }
 
+function PaisInput({value, onChange}: {value:string; onChange:(v:string)=>void}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const paises = [...new Set(AIRPORTS.map(a=>a.country))].sort();
+  const filtered = value.length >= 1
+    ? paises.filter(p=>p.toLowerCase().includes(value.toLowerCase())).slice(0,6)
+    : paises.slice(0,6);
+  const getFlag = (pais:string) => AIRPORTS.find(a=>a.country===pais)?.flag||'🌐';
+  useEffect(()=>{
+    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    document.addEventListener('mousedown',h);
+    return()=>document.removeEventListener('mousedown',h);
+  },[]);
+  return (
+    <div ref={ref} className="relative">
+      <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">País destino</label>
+      <input value={value} onChange={e=>{onChange(e.target.value);setOpen(true);}}
+        onFocus={()=>setOpen(true)} placeholder="Colombia..."
+        className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-2.5 py-2 text-sm outline-none focus:border-primary h-[38px]"/>
+      {open&&filtered.length>0&&(
+        <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-xl z-50 overflow-hidden">
+          {filtered.map(p=>(
+            <button key={p} type="button"
+              onMouseDown={e=>{e.preventDefault();onChange(p);setOpen(false);}}
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-surface-container text-left transition">
+              <span>{getFlag(p)}</span>
+              <span className="text-xs text-on-background">{p}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [rutas, setRutas] = useState<any[]>([]);
   const [precios, setPrecios] = useState<Record<string,PrecioData>>({});
@@ -255,7 +290,7 @@ export default function Dashboard() {
   const [expandido, setExpandido] = useState<string|null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
-  const [nuevoVuelo, setNuevoVuelo] = useState({origen:'',destino:'',ida:'',vuelta:'',alerta:'',dias_paquete:''});
+  const [nuevoVuelo, setNuevoVuelo] = useState({origen:'',destino:'',ida:'',vuelta:'',alerta:'',dias_paquete:'',pais_destino:''});
   const [tipoFecha, setTipoFecha] = useState<'mes'|'exacta'>('mes');
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -298,7 +333,7 @@ export default function Dashboard() {
       dias_paquete:nuevoVuelo.dias_paquete?Number(nuevoVuelo.dias_paquete):''};
     setRutas([...rutas,nueva]);
     setMostrarForm(false);
-    setNuevoVuelo({origen:'',destino:'',ida:'',vuelta:'',alerta:'',dias_paquete:''});
+    setNuevoVuelo({origen:'',destino:'',ida:'',vuelta:'',alerta:'',dias_paquete:'',pais_destino:''});
     await fetch('/api/flights',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(nueva)});
     cargar();
   };
@@ -424,15 +459,22 @@ export default function Dashboard() {
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                {[{l:'Origen',k:'origen',ph:'GYE'},{l:'Destino',k:'destino',ph:'MAD'}].map(f=>(
-                  <div key={f.k}>
-                    <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">{f.l}</label>
-                    <input required value={(nuevoVuelo as any)[f.k]}
-                      onChange={e=>setNuevoVuelo({...nuevoVuelo,[f.k]:e.target.value.toUpperCase()})}
-                      maxLength={3} placeholder={f.ph}
-                      className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-2.5 py-2 text-sm font-bold uppercase outline-none focus:border-primary h-[38px]"/>
-                  </div>
-                ))}
+                <div>
+                  <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">Origen</label>
+                  <input required value={nuevoVuelo.origen}
+                    onChange={e=>setNuevoVuelo({...nuevoVuelo,origen:e.target.value.toUpperCase()})}
+                    maxLength={3} placeholder="GYE"
+                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-2.5 py-2 text-sm font-bold uppercase outline-none focus:border-primary h-[38px]"/>
+                </div>
+                <div>
+                  <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">Destino</label>
+                  <input required value={nuevoVuelo.destino}
+                    onChange={e=>setNuevoVuelo({...nuevoVuelo,destino:e.target.value.toUpperCase()})}
+                    maxLength={3} placeholder="MAD"
+                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-2.5 py-2 text-sm font-bold uppercase outline-none focus:border-primary h-[38px]"/>
+                </div>
+                <PaisInput value={nuevoVuelo.pais_destino}
+                  onChange={v=>setNuevoVuelo({...nuevoVuelo,pais_destino:v})}/>
                 {(['ida','vuelta'] as const).map(k=>(
                   <div key={k}>
                     <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">
