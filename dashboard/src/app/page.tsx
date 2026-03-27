@@ -341,10 +341,8 @@ export default function Dashboard() {
       <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-outline-variant/15 w-full">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-8 h-8 bg-primary/15 rounded-xl flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary text-[18px]">travel_explore</span>
-            </div>
-            <span className="font-black text-sm hidden sm:block">Monitor <span className="text-primary">CTB</span></span>
+            <img src="/logo_marcka.svg" alt="Marcka" className="h-7 w-auto hidden dark:block" style={{filter:'brightness(0) invert(1)'}}/>
+            <img src="/logo_marcka.svg" alt="Marcka" className="h-7 w-auto dark:hidden"/>
           </div>
 
           {/* Tabs — desktop only */}
@@ -656,6 +654,18 @@ export default function Dashboard() {
           )}
         </main>
       </div>
+
+      {/* ── FOOTER ── */}
+      <footer className="hidden md:block text-center py-6 border-t border-outline-variant/10 mt-8">
+        <img src="/logo_marcka.svg" alt="Marcka" className="h-5 w-auto mx-auto mb-2 opacity-60 dark:invert"/>
+        <p className="text-[10px] text-on-surface-variant/50">
+          © {new Date().getFullYear()} Todos los derechos reservados · Hecho por{' '}
+          <a href="https://www.marcka.art" target="_blank" rel="noopener noreferrer"
+            className="hover:text-primary transition">Marcka</a>
+          {' '}· <a href="https://www.marcka.art" target="_blank" rel="noopener noreferrer"
+            className="hover:text-primary transition">www.marcka.art</a>
+        </p>
+      </footer>
 
       {/* ── BARRA NAVEGACIÓN INFERIOR — solo móvil ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-xl border-t border-outline-variant/15">
