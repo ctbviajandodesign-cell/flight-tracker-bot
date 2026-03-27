@@ -58,6 +58,7 @@ export async function GET() {
         vuelta: row.get('MES DE FIN') || row.get('Mes_Fin') || row.get('vuelta') || '',
         alerta: row.get('Precio_Alerta') || row.get('Alerta') || row.get('alerta') || 0,
         dias_paquete: row.get('Dias_del_Paquete') || row.get('dias_paquete') || '',
+        pais_destino: row.get('PAIS_DESTINO') || row.get('pais_destino') || '',
       };
     }).filter(f => f.origen && f.destino);
 
