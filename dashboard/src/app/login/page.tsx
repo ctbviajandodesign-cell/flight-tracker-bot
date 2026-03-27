@@ -61,8 +61,9 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src="/logo_marcka.svg" alt="Marcka" className="h-8 w-auto mx-auto mb-4 hidden dark:block" style={{filter:'brightness(0) invert(1)'}}/>
-          <img src="/logo_marcka.svg" alt="Marcka" className="h-8 w-auto mx-auto mb-4 dark:hidden"/>
+          <img src="/logo_marcka.svg" alt="Marcka" 
+  className="h-8 w-auto mx-auto mb-4"
+  style={{mixBlendMode:'screen'}}/>
           <h1 className="text-2xl font-black text-on-background">
             Monitor de Vuelos
           </h1>
