@@ -341,8 +341,8 @@ export default function Dashboard() {
       <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-outline-variant/15 w-full">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 flex-shrink-0">
-            <img src="/logo_marcka.svg" alt="Marcka" className="h-4 w-auto hidden dark:block" style={{filter:'brightness(0) invert(1)'}}/>
-            <img src="/logo_marcka.svg" alt="Marcka" className="h-4 w-auto dark:hidden"/>
+            <img src="/logo_marcka.svg" alt="Marcka" className="h-4 w-auto hidden dark:block"/>
+            <img src="/logo_marcka_dark.svg" alt="Marcka" className="h-4 w-auto dark:hidden"/>
           </div>
 
           {/* Tabs — desktop only */}
@@ -657,7 +657,8 @@ export default function Dashboard() {
 
       {/* ── FOOTER ── */}
       <footer className="hidden md:block text-center py-6 border-t border-outline-variant/10 mt-8">
-        <img src="/logo_marcka.svg" alt="Marcka" className="h-5 w-auto mx-auto mb-2 opacity-60 dark:invert"/>
+        <img src="/logo_marcka.svg" alt="Marcka" className="h-5 w-auto mx-auto mb-2 hidden dark:block opacity-60"/>
+        <img src="/logo_marcka_dark.svg" alt="Marcka" className="h-5 w-auto mx-auto mb-2 dark:hidden opacity-60"/>
         <p className="text-[10px] text-on-surface-variant/50">
           © {new Date().getFullYear()} Todos los derechos reservados · Hecho por{' '}
           <a href="https://www.marcka.art" target="_blank" rel="noopener noreferrer"
