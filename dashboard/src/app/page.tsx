@@ -337,75 +337,86 @@ export default function Dashboard() {
 
       {/* ── TOP BAR ── */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-outline-variant/15 w-full">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center gap-2 sm:gap-3 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6">
 
-          {/* Logo */}
-          <div className="flex items-center gap-2 mr-2">
-            <div className="w-7 h-7 bg-primary/15 rounded-lg flex items-center justify-center">
+          {/* ── FILA ÚNICA ADAPTABLE ── */}
+          <div className="flex items-center h-13 py-2 gap-2">
+
+            {/* Logo — siempre visible */}
+            <div className="w-7 h-7 bg-primary/15 rounded-lg flex items-center justify-center flex-shrink-0">
               <span className="material-symbols-outlined text-primary text-[16px]">travel_explore</span>
             </div>
-            <span className="font-black text-sm hidden sm:block">Monitor <span className="text-primary">CTB</span></span>
-          </div>
+            <span className="font-black text-sm hidden lg:block mr-1">Monitor <span className="text-primary">CTB</span></span>
 
-          {/* Tabs vista */}
-          <div className="flex gap-0.5 sm:gap-1 bg-surface-container-low border border-outline-variant/15 rounded-xl p-1 flex-shrink-0">
-            {([
-              {id:'todas',label:'✈️ Rutas',labelFull:'Todas las rutas'},
-              {id:'gangas',label:`🔥 ${totalGangas}`,labelFull:`Gangas (${totalGangas})`},
-              {id:'comparativa',label:'⚖️ vs',labelFull:'GYE vs UIO'},
-            ] as const).map(t=>(
-              <button key={t.id} onClick={()=>setVista(t.id)}
-                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap
-                  ${vista===t.id?'bg-primary text-white shadow-sm':'text-on-surface-variant hover:text-on-surface'}`}>
-                <span className="sm:hidden">{t.label}</span>
-                <span className="hidden sm:block">{t.labelFull}</span>
+            {/* Tabs — siempre visibles, texto corto en móvil */}
+            <div className="flex bg-surface-container-low border border-outline-variant/15 rounded-xl p-1 flex-shrink-0">
+              {([
+                {id:'todas', mob:'✈️', full:'✈️ Rutas'},
+                {id:'gangas', mob:`🔥 ${totalGangas}`, full:`🔥 Gangas`},
+                {id:'comparativa', mob:'⚖️', full:'⚖️ vs'},
+              ] as const).map(t=>(
+                <button key={t.id} onClick={()=>setVista(t.id as any)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap
+                    ${vista===t.id?'bg-primary text-white shadow-sm':'text-on-surface-variant hover:text-on-surface'}`}>
+                  <span className="sm:hidden">{t.mob}</span>
+                  <span className="hidden sm:block">{t.full}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Buscador — flexible, se achica en móvil */}
+            <div className="relative flex-1 min-w-0 max-w-xs">
+              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[15px]">search</span>
+              <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+                placeholder="Buscar..."
+                className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-1.5 pl-8 pr-2 text-xs outline-none focus:border-primary transition"/>
+            </div>
+
+            {/* Acciones — agrupadas a la derecha */}
+            <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+
+              {/* Badge fresco — solo md+ */}
+              {ultimaAct&&(
+                <span className="hidden md:flex">
+                  <FreshBadge fecha={ultimaAct}/>
+                </span>
+              )}
+
+              {/* Filtros — solo móvil */}
+              <button onClick={()=>setSidebarOpen(!sidebarOpen)}
+                title="Filtros"
+                className={`md:hidden p-2 rounded-xl border transition
+                  ${sidebarOpen?'bg-primary/15 border-primary/30 text-primary':'bg-surface-container-low border-outline-variant/20 text-on-surface-variant'}`}>
+                <span className="material-symbols-outlined text-[18px]">tune</span>
               </button>
-            ))}
-          </div>
 
-          {/* Buscador */}
-          <div className="relative flex-1 max-w-xs hidden md:block">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">search</span>
-            <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
-              placeholder="Buscar destino..."
-              className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-1.5 pl-8 pr-3 text-xs outline-none focus:border-primary transition"/>
-          </div>
+              {/* Refresh */}
+              <button onClick={cargar} title="Actualizar"
+                className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:text-primary transition">
+                <span className="material-symbols-outlined text-[18px]">refresh</span>
+              </button>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto flex-shrink-0">
-            {/* Info badges */}
-            {ultimaAct&&<FreshBadge fecha={ultimaAct}/>}
+              {/* Theme — solo sm+ */}
+              {mounted&&(
+                <div className="hidden sm:flex bg-surface-container-low border border-outline-variant/20 rounded-xl p-0.5">
+                  {(['light','dark','system'] as const).map(t=>(
+                    <button key={t} onClick={()=>setTheme(t)} title={t}
+                      className={`p-1.5 rounded-lg transition ${theme===t?'bg-primary/15 text-primary':'text-on-surface-variant hover:text-on-surface'}`}>
+                      <span className="material-symbols-outlined text-[15px]">
+                        {t==='light'?'light_mode':t==='dark'?'dark_mode':'desktop_windows'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            {/* Filtros btn móvil */}
-            <button onClick={()=>setSidebarOpen(!sidebarOpen)}
-              className={`p-2 rounded-xl border transition md:hidden ${sidebarOpen?'bg-primary/15 border-primary/30 text-primary':'bg-surface-container-low border-outline-variant/20 text-on-surface-variant'}`}>
-              <span className="material-symbols-outlined text-[18px]">tune</span>
-            </button>
-
-            {/* Refresh */}
-            <button onClick={cargar} className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:text-primary transition">
-              <span className="material-symbols-outlined text-[18px]">refresh</span>
-            </button>
-
-            {/* Theme */}
-            {mounted&&(
-              <div className="hidden sm:flex bg-surface-container-low border border-outline-variant/20 rounded-xl p-0.5">
-                {(['light','dark','system'] as const).map(t=>(
-                  <button key={t} onClick={()=>setTheme(t)}
-                    className={`p-1.5 rounded-lg transition ${theme===t?'bg-primary/15 text-primary':'text-on-surface-variant hover:text-on-surface'}`}>
-                    <span className="material-symbols-outlined text-[16px]">
-                      {t==='light'?'light_mode':t==='dark'?'dark_mode':'desktop_windows'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Nueva ruta */}
-            <button onClick={()=>setMostrarForm(!mostrarForm)}
-              className="flex items-center gap-1.5 bg-primary text-white font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-primary/90 transition shadow-md shadow-primary/20">
-              <span className="material-symbols-outlined text-[16px]">{mostrarForm?'close':'add'}</span>
-              <span className="hidden sm:block">{mostrarForm?'Cancelar':'Nueva Ruta'}</span>
-            </button>
+              {/* Nueva ruta — ícono en móvil, texto en desktop */}
+              <button onClick={()=>setMostrarForm(!mostrarForm)}
+                className="flex items-center gap-1.5 bg-primary text-white font-bold px-3 py-2 rounded-xl text-xs hover:bg-primary/90 transition shadow-md shadow-primary/20">
+                <span className="material-symbols-outlined text-[16px]">{mostrarForm?'close':'add'}</span>
+                <span className="hidden sm:block">{mostrarForm?'Cancelar':'Nueva Ruta'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
