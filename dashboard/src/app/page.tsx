@@ -26,6 +26,33 @@ const REGIONES: Record<string, string[]> = {
   "🇲🇽 México":    ["MEX","CUN"],
 };
 
+const AIRPORTS: {code:string; city:string; country:string; flag:string}[] = [
+  {code:"GYE", city:"Guayaquil",       country:"Ecuador",         flag:"🇪🇨"},
+  {code:"UIO", city:"Quito",           country:"Ecuador",         flag:"🇪🇨"},
+  {code:"CUE", city:"Cuenca",          country:"Ecuador",         flag:"🇪🇨"},
+  {code:"BOG", city:"Bogotá",          country:"Colombia",        flag:"🇨🇴"},
+  {code:"MDE", city:"Medellín",        country:"Colombia",        flag:"🇨🇴"},
+  {code:"CTG", city:"Cartagena",       country:"Colombia",        flag:"🇨🇴"},
+  {code:"PEI", city:"Pereira",         country:"Colombia",        flag:"🇨🇴"},
+  {code:"ADZ", city:"San Andrés",      country:"Colombia",        flag:"🇨🇴"},
+  {code:"PTY", city:"Panamá",          country:"Panamá",          flag:"🇵🇦"},
+  {code:"MIA", city:"Miami",           country:"USA",             flag:"🇺🇸"},
+  {code:"MCO", city:"Orlando",         country:"USA",             flag:"🇺🇸"},
+  {code:"LAX", city:"Los Ángeles",     country:"USA",             flag:"🇺🇸"},
+  {code:"NYC", city:"Nueva York",      country:"USA",             flag:"🇺🇸"},
+  {code:"MAD", city:"Madrid",          country:"España",          flag:"🇪🇸"},
+  {code:"BCN", city:"Barcelona",       country:"España",          flag:"🇪🇸"},
+  {code:"LIM", city:"Lima",            country:"Perú",            flag:"🇵🇪"},
+  {code:"SCL", city:"Santiago",        country:"Chile",           flag:"🇨🇱"},
+  {code:"EZE", city:"Buenos Aires",    country:"Argentina",       flag:"🇦🇷"},
+  {code:"GIG", city:"Río de Janeiro",  country:"Brasil",          flag:"🇧🇷"},
+  {code:"MEX", city:"Ciudad de México",country:"México",          flag:"🇲🇽"},
+  {code:"CUN", city:"Cancún",          country:"México",          flag:"🇲🇽"},
+  {code:"PUJ", city:"Punta Cana",      country:"Rep. Dominicana", flag:"🇩🇴"},
+  {code:"CUR", city:"Curazao",         country:"Curazao",         flag:"🇨🇼"},
+  {code:"IST", city:"Estambul",        country:"Turquía",         flag:"🇹🇷"},
+];
+
 const getCityName = (c: string) => IATA_MAP[c.toUpperCase()] || "Internacional";
 const toEC = (f: string) => new Date(new Date(f).getTime() - 5*3600000);
 const fmtEC = (f: string) => toEC(f).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
