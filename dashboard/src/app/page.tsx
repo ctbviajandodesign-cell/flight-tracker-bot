@@ -341,8 +341,8 @@ export default function Dashboard() {
       <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-outline-variant/15 w-full">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 flex-shrink-0">
-            <img src="/logo_marcka.svg" alt="Marcka" className="h-7 w-auto hidden dark:block" style={{filter:'brightness(0) invert(1)'}}/>
-            <img src="/logo_marcka.svg" alt="Marcka" className="h-7 w-auto dark:hidden"/>
+            <img src="/logo_marcka.svg" alt="Marcka" className="h-4 w-auto hidden dark:block" style={{filter:'brightness(0) invert(1)'}}/>
+            <img src="/logo_marcka.svg" alt="Marcka" className="h-4 w-auto dark:hidden"/>
           </div>
 
           {/* Tabs — desktop only */}
