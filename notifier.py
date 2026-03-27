@@ -31,7 +31,8 @@ def dividir_mensaje(texto, max_len=3900):
             actual += bloque + '\n\n'
     if actual.strip():
         partes.append(actual)
-    return partes
+    # Eliminar partes vacías
+    return [p for p in partes if p.strip()]
 
 def enviar_notificacion_telegram(mensaje_texto):
     token = os.getenv('TELEGRAM_TOKEN')
@@ -44,6 +45,8 @@ def enviar_notificacion_telegram(mensaje_texto):
     partes = dividir_mensaje(mensaje_texto)
 
     for i, msg in enumerate(partes):
+        if not msg.strip():
+            continue
         texto = msg
         if len(partes) > 1:
             texto = f'<b>[ Parte {i+1} de {len(partes)} ]</b>\n\n' + msg
