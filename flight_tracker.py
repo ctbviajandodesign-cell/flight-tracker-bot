@@ -97,32 +97,58 @@ async def main():
         return
 
     mensaje = titulo
-    for r in vuelos_a_mostrar:
-        ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
-        es_ganga = r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']
-        icono = "🚨" if es_ganga else "✈️"
 
-        bloque = f"{icono} <b>{ruta_l}</b>"
-        if es_ganga:
-            bloque += " <i>← GANGA</i>"
-        bloque += "\n"
+    if es_reporte_diario:
+        # REPORTE GENERAL — una línea por ruta, compacto
+        for r in vuelos_a_mostrar:
+            ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
+            es_ganga = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
+            icono = "🔥" if es_ganga else "✈️"
+            mejor = r['mejores'][0] if r['mejores'] else None
+            precio_txt = f"<b>${r['precio']}</b>" if mejor else "—"
+            fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else ""
+            tipo_txt = " 🚀" if mejor and mejor['tipo'] == "DIR" else " 🛬" if mejor and mejor['tipo'] == "ESC" else ""
+            ganga_txt = " <i>← GANGA</i>" if es_ganga else ""
+            linea = f"{icono} {ruta_l} — {precio_txt} USD{tipo_txt}{ganga_txt}"
+            if fecha_txt:
+                linea += f" · {fecha_txt}"
+            linea += "\n"
+            mensaje += linea
 
-        for i, opc in enumerate(r['mejores']):
-            medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
-            if opc['tipo'] == "DIR":
-                tipo_txt = " 🚀 <i>Directo</i>"
-            elif opc['tipo'] == "ESC":
-                tipo_txt = " 🛬 <i>Escala</i>"
-            else:
-                tipo_txt = ""
-            fecha_txt = opc['detalle'] if opc['detalle'] != 'N/D' else "—"
-            bloque += f"   {medal} <b>${opc['precio']} USD</b> — {fecha_txt}{tipo_txt}\n"
-
-        url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        bloque += f"   <i>📊 Promedio: ${r['mediana']} USD</i>\n"
-        bloque += f"   🔗 <a href=\"{url_l}\">Ver en Google Flights</a>\n"
-        bloque += "─────────────────\n"
-        mensaje += bloque
+        # Separador y gangas con detalle al final
+        if vuelos_ganga:
+            mensaje += "\n🚨 <b>DETALLE GANGAS:</b>\n"
+            for r in vuelos_ganga:
+                es_ganga = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
+                if not es_ganga:
+                    continue
+                ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
+                url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                mejor = r['mejores'][0] if r['mejores'] else None
+                fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else "—"
+                tipo_txt = " 🚀 Directo" if mejor and mejor['tipo'] == "DIR" else " 🛬 Escala" if mejor and mejor['tipo'] == "ESC" else ""
+                mensaje += (
+                    f"🔥 <b>{ruta_l}</b>\n"
+                    f"   💰 <b>${r['precio']} USD</b>{tipo_txt} · {fecha_txt}\n"
+                    f"   🎯 Alerta: ${r['alerta_manual']} | 📊 Prom: ${r['mediana']}\n"
+                    f"   🔗 <a href=\"{url_l}\">Ver en Google Flights</a>\n"
+                )
+    else:
+        # ALERTA GANGAS — detalle completo solo de gangas
+        for r in vuelos_a_mostrar:
+            es_ganga = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
+            ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
+            url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            mejor = r['mejores'][0] if r['mejores'] else None
+            fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else "—"
+            tipo_txt = " 🚀 Directo" if mejor and mejor['tipo'] == "DIR" else " 🛬 Escala" if mejor and mejor['tipo'] == "ESC" else ""
+            mensaje += (
+                f"🔥 <b>{ruta_l}</b>\n"
+                f"   💰 <b>${r['precio']} USD</b>{tipo_txt} · {fecha_txt}\n"
+                f"   🎯 Alerta: ${r['alerta_manual']} | 📊 Prom: ${r['mediana']}\n"
+                f"   🔗 <a href=\"{url_l}\">Ver en Google Flights</a>\n"
+                f"─────────────────\n"
+            )
 
     enviar_notificacion_telegram(mensaje)
 
