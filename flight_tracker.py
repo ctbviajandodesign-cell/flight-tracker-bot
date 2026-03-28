@@ -28,8 +28,8 @@ async def guardar_en_supabase(resultados):
             "mediana": r.get('mediana', 0),
             "fecha_vuelo": r['mejores'][0]['detalle'] if r['mejores'] else "N/D",
             "precio_alerta": r.get('alerta_manual', 0),
-            "es_ganga": bool(r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']),
-            "tipo_vuelo": r['mejores'][0]['tipo'] if r['mejores'][0]['tipo'] else "N/D"
+            "es_ganga": bool(r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']),
+            "tipo_vuelo": r['mejores'][0]['tipo'] if r['mejores'] and r['mejores'][0]['tipo'] else "N/D"
         })
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -48,16 +48,15 @@ async def guardar_en_supabase(resultados):
 
 async def main():
     ahora_utc = datetime.utcnow()
-    ahora_ec = datetime.utcnow().replace(hour=(datetime.utcnow().hour - 5) % 24)
     hora_utc = ahora_utc.hour
     fecha_hora = ahora_utc.strftime('%d/%m/%Y')
 
     print("🚀 Iniciando rastreo inteligente...")
 
-    # 12 UTC = 7:47 AM Ecuador → GENERAL
-    # 15 UTC = 10:47 AM Ecuador → SOLO GANGAS
-    # 20 UTC = 3:10 PM Ecuador  → GENERAL
-    # 21 UTC = 4:45 PM Ecuador  → SOLO GANGAS
+    # 12-13 UTC = ~8AM Ecuador  → GENERAL
+    # 15 UTC    = ~10AM Ecuador → SOLO GANGAS
+    # 20-21 UTC = ~3PM Ecuador  → GENERAL
+    # 22 UTC    = ~5PM Ecuador  → SOLO GANGAS
     es_reporte_diario = (hora_utc in [12, 13, 20, 21])
 
     try:
@@ -72,56 +71,58 @@ async def main():
 
     await guardar_en_supabase(resultados)
 
-    vuelos_ganga = [r for r in resultados if r['precio'] <= r['alerta_manual'] or r['es_ganga_mat']]
+    # Criterio único de ganga: precio actual < precio alerta definido en Sheets
+    vuelos_ganga = [
+        r for r in resultados
+        if r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
+    ]
 
+    # Definir qué mostrar y con qué título
     if es_reporte_diario and vuelos_ganga:
         titulo = (
             f"🌐 <b>REPORTE DIARIO CTB</b> — {fecha_hora}\n"
-            f"🚨 <b>¡{len(vuelos_ganga)} gangas detectadas!</b>\n"
-            f"📊 {len(resultados)} rutas analizadas\n\n"
+            f"🚨 <b>{len(vuelos_ganga)} gangas detectadas</b> de {len(resultados)} rutas\n\n"
         )
-        vuelos_a_mostrar = resultados
+        vuelos_a_mostrar = resultados  # TODAS las rutas
     elif es_reporte_diario:
         titulo = (
             f"🌐 <b>REPORTE DIARIO CTB</b> — {fecha_hora}\n"
             f"📊 {len(resultados)} rutas analizadas — sin gangas por ahora\n\n"
         )
-        vuelos_a_mostrar = resultados
+        vuelos_a_mostrar = resultados  # TODAS las rutas
     elif vuelos_ganga:
         titulo = (
-            f"🚨 <b>¡ALERTA DE GANGAS!</b> — {fecha_hora}\n"
+            f"🚨 <b>ALERTA DE GANGAS</b> — {fecha_hora}\n"
             f"🔥 <b>{len(vuelos_ganga)} oportunidades detectadas</b>\n\n"
         )
-        vuelos_a_mostrar = vuelos_ganga
+        vuelos_a_mostrar = vuelos_ganga  # SOLO gangas
     else:
-        return
+        return  # No hay gangas en reporte de gangas → silencio
 
     mensaje = titulo
 
     if es_reporte_diario:
-        # REPORTE GENERAL — una línea por ruta, compacto
+        # ── REPORTE GENERAL ─────────────────────────────────
+        # Una línea por ruta — compacto para caber en 1 mensaje
         for r in vuelos_a_mostrar:
             ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
             es_ganga = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
             icono = "🔥" if es_ganga else "✈️"
             mejor = r['mejores'][0] if r['mejores'] else None
-            precio_txt = f"<b>${r['precio']}</b>" if mejor else "—"
             fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else ""
             tipo_txt = " 🚀" if mejor and mejor['tipo'] == "DIR" else " 🛬" if mejor and mejor['tipo'] == "ESC" else ""
             ganga_txt = " <i>← GANGA</i>" if es_ganga else ""
-            linea = f"{icono} {ruta_l} — {precio_txt} USD{tipo_txt}{ganga_txt}"
+            linea = f"{icono} {ruta_l} — <b>${r['precio']}</b> USD{tipo_txt}{ganga_txt}"
             if fecha_txt:
                 linea += f" · {fecha_txt}"
             linea += "\n"
             mensaje += linea
 
-        # Separador y gangas con detalle al final
-        if vuelos_ganga:
+        # Detalle de gangas al final (solo si hay)
+        gangas_reales = [r for r in vuelos_ganga if r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']]
+        if gangas_reales:
             mensaje += "\n🚨 <b>DETALLE GANGAS:</b>\n"
-            for r in vuelos_ganga:
-                es_ganga = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
-                if not es_ganga:
-                    continue
+            for r in gangas_reales:
                 ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
                 url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                 mejor = r['mejores'][0] if r['mejores'] else None
@@ -134,9 +135,9 @@ async def main():
                     f"   🔗 <a href=\"{url_l}\">Ver en Google Flights</a>\n"
                 )
     else:
-        # ALERTA GANGAS — detalle completo solo de gangas
+        # ── ALERTA GANGAS ────────────────────────────────────
+        # Solo las rutas que cruzaron el precio alerta
         for r in vuelos_a_mostrar:
-            es_ganga = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
             ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
             url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             mejor = r['mejores'][0] if r['mejores'] else None
