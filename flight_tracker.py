@@ -97,7 +97,15 @@ async def main():
         )
         vuelos_a_mostrar = vuelos_ganga  # SOLO gangas
     else:
-        return  # No hay gangas en reporte de gangas → silencio
+        # No hay gangas — enviar mensaje informativo para confirmar que el bot funciona
+        mensaje_vacio = (
+            f"✅ <b>Bot activo</b> — {fecha_hora}\n"
+            f"📊 {len(resultados)} rutas analizadas\n"
+            f"💤 Sin gangas en este momento\n"
+            f"<i>Próxima consulta en horario programado</i>"
+        )
+        enviar_notificacion_telegram(mensaje_vacio)
+        return
 
     mensaje = titulo
 
