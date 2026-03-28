@@ -73,35 +73,40 @@ export async function POST(req: Request) {
     const body = await req.json();
     const doc = await getDoc();
     const sheet = doc.sheetsByIndex[0];
-    
     await sheet.loadHeaderRow();
     const headers = sheet.headerValues;
-    
+
+    const setVal = (row: any, keys: string[], val: any) => {
+      for (const k of keys) { if (headers.includes(k)) { row[k] = val; return; } }
+      row[keys[keys.length-1]] = val;
+    };
+
+    // ── UPDATE fila existente ──────────────────────────────────
+    if (body._update && body.id) {
+      const rows = await sheet.getRows();
+      const row = rows.find(r => r.rowNumber === body.id);
+      if (row) {
+        setVal(row, ['ORIGEN','Origen','origen'], body.origen);
+        setVal(row, ['DESTINO','Destino','destino'], body.destino);
+        setVal(row, ['MES DE INICIO','Mes_Inicio','ida'], body.ida || '');
+        setVal(row, ['MES DE FIN','Mes_Fin','vuelta'], body.vuelta || '');
+        setVal(row, ['PRECIO ALERTA','Precio_Alerta','Alerta','alerta'], body.alerta || 0);
+        setVal(row, ['Dias_del_Paquete','dias_paquete'], body.dias_paquete || '');
+        setVal(row, ['PAIS_DESTINO','pais_destino'], body.pais_destino || '');
+        await row.save();
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    // ── INSERT fila nueva ──────────────────────────────────────
     const newRow: any = {};
-    
-    if (headers.includes('ORIGEN')) newRow['ORIGEN'] = body.origen;
-    else if (headers.includes('Origen')) newRow['Origen'] = body.origen;
-    else newRow['origen'] = body.origen;
-    
-    if (headers.includes('DESTINO')) newRow['DESTINO'] = body.destino;
-    else if (headers.includes('Destino')) newRow['Destino'] = body.destino;
-    else newRow['destino'] = body.destino;
-    
-    if (headers.includes('MES DE INICIO')) newRow['MES DE INICIO'] = body.ida;
-    else if (headers.includes('Mes_Inicio')) newRow['Mes_Inicio'] = body.ida;
-    else newRow['ida'] = body.ida;
-    
-    if (headers.includes('MES DE FIN')) newRow['MES DE FIN'] = body.vuelta;
-    else if (headers.includes('Mes_Fin')) newRow['Mes_Fin'] = body.vuelta;
-    else newRow['vuelta'] = body.vuelta;
-    
-    if (headers.includes('Precio_Alerta')) newRow['Precio_Alerta'] = body.alerta || 0;
-    else if (headers.includes('Alerta')) newRow['Alerta'] = body.alerta || 0;
-    else newRow['alerta'] = body.alerta || 0;
-
-    if (headers.includes('Dias_del_Paquete')) newRow['Dias_del_Paquete'] = body.dias_paquete || '';
-    else newRow['dias_paquete'] = body.dias_paquete || '';
-
+    setVal(newRow, ['ORIGEN','Origen','origen'], body.origen);
+    setVal(newRow, ['DESTINO','Destino','destino'], body.destino);
+    setVal(newRow, ['MES DE INICIO','Mes_Inicio','ida'], body.ida || '');
+    setVal(newRow, ['MES DE FIN','Mes_Fin','vuelta'], body.vuelta || '');
+    setVal(newRow, ['PRECIO ALERTA','Precio_Alerta','Alerta','alerta'], body.alerta || 0);
+    setVal(newRow, ['Dias_del_Paquete','dias_paquete'], body.dias_paquete || '');
+    setVal(newRow, ['PAIS_DESTINO','pais_destino'], body.pais_destino || '');
     await sheet.addRow(newRow);
 
     return NextResponse.json({ success: true });
