@@ -15,23 +15,33 @@ def limpiar_html(texto):
     texto = texto.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
     return texto
 
-def dividir_mensaje(texto, max_len=3900):
-    """Divide el mensaje en partes respetando bloques de rutas"""
-    bloques = texto.split('\n\n')
+def dividir_mensaje(texto, max_len=3800):
+    """
+    Divide el mensaje en partes respetando líneas completas.
+    Calcula dinámicamente cuántas partes necesita según el contenido real.
+    """
+    if len(texto) <= max_len:
+        return [texto]
+
+    # Dividir por líneas para no cortar a mitad de una ruta
+    lineas = texto.split('\n')
     partes = []
     actual = ''
-    for bloque in bloques:
-        if not bloque.strip():
-            continue
-        if len(actual) + len(bloque) + 5 > max_len:
-            if actual:
-                partes.append(actual)
-            actual = bloque + '\n\n'
+
+    for linea in lineas:
+        # Si agregar esta línea excede el límite, cerrar parte actual
+        if len(actual) + len(linea) + 1 > max_len:
+            if actual.strip():
+                partes.append(actual.strip())
+            actual = linea + '\n'
         else:
-            actual += bloque + '\n\n'
+            actual += linea + '\n'
+
     if actual.strip():
-        partes.append(actual)
-    # Eliminar partes vacías
+        partes.append(actual.strip())
+
+    total = len(partes)
+    print(f"📨 Mensaje: {len(texto):,} chars → {total} parte(s) de ~{max_len:,} chars c/u")
     return [p for p in partes if p.strip()]
 
 def enviar_notificacion_telegram(mensaje_texto):
