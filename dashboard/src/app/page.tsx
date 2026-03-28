@@ -174,12 +174,15 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete,editing,editData,
             </div>
             <div>
               {editing?(
-                <div className="flex items-center gap-1.5">
-                  <input value={val('origen')} onChange={e=>onEditChange('origen',e.target.value.toUpperCase())}
-                    maxLength={3} className="w-14 bg-surface-container border border-primary/30 rounded-lg px-2 py-1 text-sm font-black uppercase outline-none focus:border-primary text-center"/>
-                  <span className="text-on-surface-variant/30">→</span>
-                  <input value={val('destino')} onChange={e=>onEditChange('destino',e.target.value.toUpperCase())}
-                    maxLength={3} className="w-14 bg-surface-container border border-primary/30 rounded-lg px-2 py-1 text-sm font-black uppercase outline-none focus:border-primary text-center"/>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <input value={val('origen')} onChange={e=>onEditChange('origen',e.target.value.toUpperCase())}
+                      maxLength={3} className="w-14 bg-surface-container border border-primary/30 rounded-lg px-2 py-1 text-sm font-black uppercase outline-none focus:border-primary text-center"/>
+                    <span className="text-on-surface-variant/30">→</span>
+                    <input value={val('destino')} onChange={e=>onEditChange('destino',e.target.value.toUpperCase())}
+                      maxLength={3} className="w-14 bg-surface-container border border-primary/30 rounded-lg px-2 py-1 text-sm font-black uppercase outline-none focus:border-primary text-center"/>
+                  </div>
+                  <PaisInputInline value={val('pais_destino')} onChange={v=>onEditChange('pais_destino',v)}/>
                 </div>
               ):(
                 <div className="flex items-center gap-1.5 font-black text-sm">
@@ -340,6 +343,38 @@ const PAISES_MUNDO: {nombre:string; flag:string}[] = [
   {nombre:"Japón",flag:"🇯🇵"},{nombre:"China",flag:"🇨🇳"},{nombre:"India",flag:"🇮🇳"},
   {nombre:"Emiratos Árabes",flag:"🇦🇪"},{nombre:"Qatar",flag:"🇶🇦"},{nombre:"Australia",flag:"🇦🇺"},
 ].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
+function PaisInputInline({value, onChange}: {value:string; onChange:(v:string)=>void}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const filtered = value.length >= 1
+    ? PAISES_MUNDO.filter(p=>p.nombre.toLowerCase().includes(value.toLowerCase())).slice(0,6)
+    : PAISES_MUNDO.slice(0,6);
+  useEffect(()=>{
+    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    document.addEventListener('mousedown',h);
+    return()=>document.removeEventListener('mousedown',h);
+  },[]);
+  return (
+    <div ref={ref} className="relative" onClick={e=>e.stopPropagation()}>
+      <input value={value} onChange={e=>{onChange(e.target.value);setOpen(true);}}
+        onFocus={()=>setOpen(true)} placeholder="País destino..."
+        className="w-full bg-surface-container border border-primary/30 rounded-lg px-2 py-1 text-xs outline-none focus:border-primary h-[28px]"/>
+      {open&&filtered.length>0&&(
+        <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-xl z-50 overflow-hidden">
+          {filtered.map(p=>(
+            <button key={p.nombre} type="button"
+              onMouseDown={e=>{e.preventDefault();onChange(p.nombre);setOpen(false);}}
+              className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface-container text-left transition">
+              <span className="text-sm">{p.flag}</span>
+              <span className="text-xs text-on-background">{p.nombre}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PaisInput({value, onChange}: {value:string; onChange:(v:string)=>void}) {
   const [open, setOpen] = useState(false);
