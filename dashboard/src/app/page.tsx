@@ -324,14 +324,29 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete,editing,editData,
   );
 }
 
+const PAISES_MUNDO: {nombre:string; flag:string}[] = [
+  {nombre:"Argentina",flag:"🇦🇷"},{nombre:"Bolivia",flag:"🇧🇴"},{nombre:"Brasil",flag:"🇧🇷"},
+  {nombre:"Chile",flag:"🇨🇱"},{nombre:"Colombia",flag:"🇨🇴"},{nombre:"Costa Rica",flag:"🇨🇷"},
+  {nombre:"Cuba",flag:"🇨🇺"},{nombre:"Ecuador",flag:"🇪🇨"},{nombre:"El Salvador",flag:"🇸🇻"},
+  {nombre:"España",flag:"🇪🇸"},{nombre:"Estados Unidos",flag:"🇺🇸"},{nombre:"Guatemala",flag:"🇬🇹"},
+  {nombre:"Honduras",flag:"🇭🇳"},{nombre:"México",flag:"🇲🇽"},{nombre:"Nicaragua",flag:"🇳🇮"},
+  {nombre:"Panamá",flag:"🇵🇦"},{nombre:"Paraguay",flag:"🇵🇾"},{nombre:"Perú",flag:"🇵🇪"},
+  {nombre:"Rep. Dominicana",flag:"🇩🇴"},{nombre:"Uruguay",flag:"🇺🇾"},{nombre:"Venezuela",flag:"🇻🇪"},
+  {nombre:"Alemania",flag:"🇩🇪"},{nombre:"Francia",flag:"🇫🇷"},{nombre:"Italia",flag:"🇮🇹"},
+  {nombre:"Portugal",flag:"🇵🇹"},{nombre:"Reino Unido",flag:"🇬🇧"},{nombre:"Holanda",flag:"🇳🇱"},
+  {nombre:"Suiza",flag:"🇨🇭"},{nombre:"Turquía",flag:"🇹🇷"},{nombre:"Canadá",flag:"🇨🇦"},
+  {nombre:"Jamaica",flag:"🇯🇲"},{nombre:"Curazao",flag:"🇨🇼"},{nombre:"Aruba",flag:"🇦🇼"},
+  {nombre:"Trinidad y Tobago",flag:"🇹🇹"},{nombre:"Barbados",flag:"🇧🇧"},
+  {nombre:"Japón",flag:"🇯🇵"},{nombre:"China",flag:"🇨🇳"},{nombre:"India",flag:"🇮🇳"},
+  {nombre:"Emiratos Árabes",flag:"🇦🇪"},{nombre:"Qatar",flag:"🇶🇦"},{nombre:"Australia",flag:"🇦🇺"},
+].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
 function PaisInput({value, onChange}: {value:string; onChange:(v:string)=>void}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const paises = [...new Set(AIRPORTS.map(a=>a.country))].sort();
   const filtered = value.length >= 1
-    ? paises.filter(p=>p.toLowerCase().includes(value.toLowerCase())).slice(0,6)
-    : paises.slice(0,6);
-  const getFlag = (pais:string) => AIRPORTS.find(a=>a.country===pais)?.flag||'🌐';
+    ? PAISES_MUNDO.filter(p=>p.nombre.toLowerCase().includes(value.toLowerCase())).slice(0,8)
+    : PAISES_MUNDO.slice(0,8);
   useEffect(()=>{
     const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
     document.addEventListener('mousedown',h);
@@ -346,11 +361,11 @@ function PaisInput({value, onChange}: {value:string; onChange:(v:string)=>void})
       {open&&filtered.length>0&&(
         <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-xl z-50 overflow-hidden">
           {filtered.map(p=>(
-            <button key={p} type="button"
-              onMouseDown={e=>{e.preventDefault();onChange(p);setOpen(false);}}
+            <button key={p.nombre} type="button"
+              onMouseDown={e=>{e.preventDefault();onChange(p.nombre);setOpen(false);}}
               className="w-full flex items-center gap-2 px-3 py-2 hover:bg-surface-container text-left transition">
-              <span>{getFlag(p)}</span>
-              <span className="text-xs text-on-background">{p}</span>
+              <span>{p.flag}</span>
+              <span className="text-xs text-on-background">{p.nombre}</span>
             </button>
           ))}
         </div>
