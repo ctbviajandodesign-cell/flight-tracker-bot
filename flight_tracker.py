@@ -48,16 +48,12 @@ async def guardar_en_supabase(resultados):
 
 async def main():
     ahora_utc = datetime.utcnow()
-    hora_utc = ahora_utc.hour
     fecha_hora = ahora_utc.strftime('%d/%m/%Y')
 
     print("🚀 Iniciando rastreo inteligente...")
 
-    # 12-13 UTC = ~8AM Ecuador  → GENERAL
-    # 15 UTC    = ~10AM Ecuador → SOLO GANGAS
-    # 20-21 UTC = ~3PM Ecuador  → GENERAL
-    # 22 UTC    = ~5PM Ecuador  → SOLO GANGAS
-    es_reporte_diario = (hora_utc in [12, 13, 20, 21])
+    run_type = os.getenv("RUN_TYPE", "gangas")
+    es_reporte_diario = (run_type == "general")
 
     try:
         resultados = await asyncio.wait_for(procesar_rutas(), timeout=2400)

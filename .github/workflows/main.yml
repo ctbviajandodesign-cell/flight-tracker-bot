@@ -2,7 +2,7 @@ name: Daily Flight Tracker
 
 on:
   schedule:
-    - cron: '47 12 * * *'   # 7:47 AM Ecuador  → GENERAL (llega ~8:00 AM)
+    - cron: '17 11 * * *'   # 6:17 AM Ecuador  → GENERAL (llega ~6:30 AM)
     - cron: '47 15 * * *'   # 10:47 AM Ecuador → SOLO GANGAS (llega ~11:00 AM)
     - cron: '10 20 * * *'   # 3:10 PM Ecuador  → GENERAL (llega ~3:30 PM)
     - cron: '45 21 * * *'   # 4:45 PM Ecuador  → SOLO GANGAS (llega ~5:00 PM)
@@ -35,4 +35,5 @@ jobs:
           GOOGLE_SHEETS_URL: ${{ secrets.GOOGLE_SHEETS_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          RUN_TYPE: ${{ (github.event.schedule == '17 11 * * *' || github.event.schedule == '10 20 * * *') && 'general' || 'gangas' }}
         run: python flight_tracker.py
