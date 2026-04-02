@@ -26,10 +26,10 @@ async def guardar_en_supabase(resultados):
             "ruta": r['ruta'],
             "precio": r['precio'],
             "mediana": r.get('mediana', 0),
-            "fecha_vuelo": r['mejores'][0]['detalle'] if r['mejores'] else "N/D",
+            "fecha_vuelo": r['mejores'][0]['detalle'] if r.get('mejores') else "N/D",
             "precio_alerta": r.get('alerta_manual', 0),
             "es_ganga": bool(r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']),
-            "tipo_vuelo": r['mejores'][0]['tipo'] if r['mejores'] and r['mejores'][0]['tipo'] else "N/D"
+            "tipo_vuelo": r['mejores'][0]['tipo'] if r.get('mejores') and r['mejores'][0]['tipo'] else "N/D"
         })
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -57,8 +57,11 @@ async def main():
 
     try:
         resultados = await asyncio.wait_for(procesar_rutas(), timeout=2400)
-    except:
-        print("❌ Tiempo excedido.")
+    except asyncio.TimeoutError:
+        print("❌ Tiempo excedido (40 min).")
+        return
+    except Exception as e:
+        print(f"❌ Error inesperado: {e}")
         return
 
     if not resultados:
@@ -112,7 +115,7 @@ async def main():
             ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
             es_ganga = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
             icono = "🔥" if es_ganga else "✈️"
-            mejor = r['mejores'][0] if r['mejores'] else None
+            mejor = r['mejores'][0] if r.get('mejores') else None
             fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else ""
             tipo_txt = " 🚀" if mejor and mejor['tipo'] == "DIR" else " 🛬" if mejor and mejor['tipo'] == "ESC" else ""
             ganga_txt = " <i>← GANGA</i>" if es_ganga else ""
@@ -129,7 +132,7 @@ async def main():
             for r in gangas_reales:
                 ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
                 url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                mejor = r['mejores'][0] if r['mejores'] else None
+                mejor = r['mejores'][0] if r.get('mejores') else None
                 fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else "—"
                 tipo_txt = " 🚀 Directo" if mejor and mejor['tipo'] == "DIR" else " 🛬 Escala" if mejor and mejor['tipo'] == "ESC" else ""
                 mensaje += (
@@ -144,7 +147,7 @@ async def main():
         for r in vuelos_a_mostrar:
             ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
             url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            mejor = r['mejores'][0] if r['mejores'] else None
+            mejor = r['mejores'][0] if r.get('mejores') else None
             fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else "—"
             tipo_txt = " 🚀 Directo" if mejor and mejor['tipo'] == "DIR" else " 🛬 Escala" if mejor and mejor['tipo'] == "ESC" else ""
             mensaje += (
