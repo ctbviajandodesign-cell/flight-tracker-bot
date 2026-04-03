@@ -8,8 +8,25 @@ from io import StringIO
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 
+# Parche: aeropuertos que Google confunde por código corto
+_NOMBRES_AEROPUERTO = {
+    "PEI": "Pereira Colombia",
+    "EZE": "Ezeiza Buenos Aires Argentina",
+}
+# Parche: cap de precio máximo por aeropuerto (origen o destino)
+_PRECIO_MAX_AEROPUERTO = {
+    "PEI": 800,
+    "EZE": 1800,
+}
+
 async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
-    url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destino}%20from%20{origen}%20on%20{fecha_inicio}%20through%20{fecha_fin}&hl=es-419"
+    origen_q  = _NOMBRES_AEROPUERTO.get(origen.upper(),  origen).replace(" ", "%20")
+    destino_q = _NOMBRES_AEROPUERTO.get(destino.upper(), destino).replace(" ", "%20")
+    precio_max = max(
+        _PRECIO_MAX_AEROPUERTO.get(origen.upper(),  0),
+        _PRECIO_MAX_AEROPUERTO.get(destino.upper(), 0),
+    )
+    url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destino_q}%20from%20{origen_q}%20on%20{fecha_inicio}%20through%20{fecha_fin}&hl=es-419"
     print(f"✈️ Analizando: {origen} -> {destino}")
     try:
         await page.goto(url, wait_until="commit", timeout=35000)
@@ -66,6 +83,8 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
                 continue
 
             if precio <= 10:
+                continue
+            if precio_max > 0 and precio > precio_max:
                 continue
 
             # Tipo: solo marcar si hay certeza, sino dejar vacío

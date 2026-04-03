@@ -2,7 +2,7 @@ import asyncio
 import os
 import httpx
 import statistics
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import quote
 from dotenv import load_dotenv
 from notifier import enviar_notificacion_telegram
@@ -77,6 +77,49 @@ async def obtener_precios_historicos(ruta):
     return []
 
 
+async def contar_gangas_hoy(ruta):
+    """Cuenta cuántas veces fue ganga esta ruta hoy en Supabase."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        return 0
+    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
+    try:
+        today = (datetime.utcnow() - timedelta(hours=5)).strftime('%Y-%m-%d')  # hora Ecuador
+        ruta_encoded = quote(ruta, safe='')
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{url}/rest/v1/vuelos_historial?ruta=eq.{ruta_encoded}&es_ganga=eq.true&fecha=gte.{today}T00:00:00&select=ruta",
+                headers=headers
+            )
+            if resp.status_code == 200:
+                return len(resp.json())
+    except Exception as e:
+        print(f"⚠️ Error racha ({ruta}): {e}")
+    return 0
+
+
+async def obtener_resumen_dia():
+    """Obtiene las mejores gangas del día desde Supabase."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        return []
+    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
+    try:
+        today = (datetime.utcnow() - timedelta(hours=5)).strftime('%Y-%m-%d')  # hora Ecuador
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                f"{url}/rest/v1/vuelos_historial?es_ganga=eq.true&fecha=gte.{today}T00:00:00&order=precio.asc&select=ruta,precio,mediana,precio_alerta",
+                headers=headers
+            )
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception as e:
+        print(f"⚠️ Error resumen día: {e}")
+    return []
+
+
 async def analizar_gangas_historicas(resultados):
     """Para rutas sin alerta manual, detecta gangas comparando con historial de Supabase."""
     rutas_sin_alerta = [r for r in resultados if r['alerta_manual'] == 0]
@@ -110,6 +153,42 @@ async def main():
 
     run_type = os.getenv("RUN_TYPE", "gangas")
     es_reporte_diario = (run_type == "general")
+
+    # ── RESUMEN DEL DÍA ──────────────────────────────────────
+    if run_type == "resumen":
+        gangas_hoy = await obtener_resumen_dia()
+        if not gangas_hoy:
+            enviar_notificacion_telegram(
+                f"🌙 <b>Resumen del día</b> — {fecha_hora}\n"
+                f"📊 Sin gangas detectadas hoy."
+            )
+            return
+        # Deduplicar por ruta, quedar con la de menor precio
+        vistas = {}
+        for g in gangas_hoy:
+            ruta = g['ruta']
+            if ruta not in vistas or g['precio'] < vistas[ruta]['precio']:
+                vistas[ruta] = g
+        top = sorted(vistas.values(), key=lambda x: x['precio'])[:3]
+        lineas = ""
+        for i, g in enumerate(top, 1):
+            ruta_l = g['ruta'].replace("<", "&lt;").replace(">", "&gt;")
+            if g.get('precio_alerta') and g['precio_alerta'] > 0:
+                ref = f"🎯 alerta ${g['precio_alerta']}"
+            elif g.get('mediana') and g['mediana'] > 0:
+                pct = int((1 - g['precio'] / g['mediana']) * 100)
+                ref = f"📉 -{pct}% del promedio"
+            else:
+                ref = ""
+            lineas += f"{i}. {ruta_l} — <b>${g['precio']} USD</b>"
+            if ref:
+                lineas += f" · {ref}"
+            lineas += "\n"
+        enviar_notificacion_telegram(
+            f"🌙 <b>Resumen del día</b> — {fecha_hora}\n"
+            f"🔥 Mejores gangas de hoy:\n\n{lineas}"
+        )
+        return
 
     try:
         resultados = await asyncio.wait_for(procesar_rutas(), timeout=2400)
@@ -169,11 +248,21 @@ async def main():
 
     if es_reporte_diario:
         # ── REPORTE GENERAL ─────────────────────────────────
+        # Pre-cargar rachas para todas las gangas del día
+        rachas = {}
+        if vuelos_ganga:
+            tareas_racha = [contar_gangas_hoy(r['ruta']) for r in vuelos_ganga]
+            conteos = await asyncio.gather(*tareas_racha)
+            rachas = {r['ruta']: c for r, c in zip(vuelos_ganga, conteos)}
+
         for r in vuelos_a_mostrar:
             ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
             es_ganga_manual = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
             es_ganga = es_ganga_manual or r.get('ganga_historica', False)
-            icono = "🔥" if es_ganga else "✈️"
+            if es_ganga:
+                icono = "🔥🔥" if rachas.get(r['ruta'], 0) >= 2 else "🔥"
+            else:
+                icono = "✈️"
             mejor = r['mejores'][0] if r.get('mejores') else None
             fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else ""
             tipo_txt = " 🚀" if mejor and mejor['tipo'] == "DIR" else " 🛬" if mejor and mejor['tipo'] == "ESC" else ""
@@ -189,26 +278,6 @@ async def main():
             linea += "\n"
             mensaje += linea
 
-        # Detalle de gangas al final
-        if vuelos_ganga:
-            mensaje += "\n🚨 <b>DETALLE GANGAS:</b>\n"
-            for r in vuelos_ganga:
-                ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
-                url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                mejor = r['mejores'][0] if r.get('mejores') else None
-                fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else "—"
-                tipo_txt = " 🚀 Directo" if mejor and mejor['tipo'] == "DIR" else " 🛬 Escala" if mejor and mejor['tipo'] == "ESC" else ""
-                es_ganga_manual = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
-                if es_ganga_manual:
-                    referencia = f"🎯 Alerta: ${r['alerta_manual']} | 📊 Prom: ${r['mediana']}"
-                else:
-                    referencia = f"📉 {r['bajada_pct']}% bajo promedio histórico (${r['mediana_historica']})"
-                mensaje += (
-                    f"🔥 <b>{ruta_l}</b>\n"
-                    f"   💰 <b>${r['precio']} USD</b>{tipo_txt} · {fecha_txt}\n"
-                    f"   {referencia}\n"
-                    f"   🔗 <a href=\"{url_l}\">Ver en Google Flights</a>\n"
-                )
     else:
         # ── ALERTA GANGAS ────────────────────────────────────
         for r in vuelos_a_mostrar:

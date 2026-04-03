@@ -4,8 +4,9 @@ on:
   schedule:
     - cron: '17 11 * * *'   # 6:17 AM Ecuador  → GENERAL (llega ~6:30 AM)
     - cron: '47 15 * * *'   # 10:47 AM Ecuador → SOLO GANGAS (llega ~11:00 AM)
-    - cron: '10 20 * * *'   # 3:10 PM Ecuador  → GENERAL (llega ~3:30 PM)
+    - cron: '10 19 * * *'   # 2:10 PM Ecuador  → GENERAL (llega ~2:30 PM)
     - cron: '45 21 * * *'   # 4:45 PM Ecuador  → SOLO GANGAS (llega ~5:00 PM)
+    - cron: '0 2 * * *'    # 9:00 PM Ecuador  → RESUMEN DEL DÍA
   workflow_dispatch:
 
 jobs:
@@ -35,5 +36,5 @@ jobs:
           GOOGLE_SHEETS_URL: ${{ secrets.GOOGLE_SHEETS_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          RUN_TYPE: ${{ (github.event.schedule == '17 11 * * *' || github.event.schedule == '10 20 * * *') && 'general' || 'gangas' }}
+          RUN_TYPE: ${{ github.event.schedule == '0 2 * * *' && 'resumen' || (github.event.schedule == '17 11 * * *' || github.event.schedule == '10 19 * * *') && 'general' || 'gangas' }}
         run: python flight_tracker.py
