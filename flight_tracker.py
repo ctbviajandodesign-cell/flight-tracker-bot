@@ -318,7 +318,7 @@ async def main():
             if r.get('ganga_historica'):
                 ganga_txt = f" <i>← -{r['bajada_pct']}% Hist.</i>"
             elif r.get('ganga_sesion'):
-                ganga_txt = " <i>← mercado actual</i>"
+                ganga_txt = " <i>← Merc. Act.</i>"
             else:
                 ganga_txt = ""
             tendencia = r.get('tendencia', '')
