@@ -121,6 +121,30 @@ async def obtener_resumen_dia():
     return []
 
 
+async def obtener_stats_dia():
+    """Obtiene rutas monitoreadas hoy y precio más bajo del día desde Supabase."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        return 0, None
+    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
+    try:
+        today = (datetime.utcnow() - timedelta(hours=5)).strftime('%Y-%m-%d')
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                f"{url}/rest/v1/vuelos_historial?fecha=gte.{today}T00:00:00&order=precio.asc&select=ruta,precio",
+                headers=headers
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                rutas_unicas = len(set(r['ruta'] for r in data))
+                mejor = data[0] if data else None
+                return rutas_unicas, mejor
+    except Exception as e:
+        print(f"⚠️ Error stats día: {e}")
+    return 0, None
+
+
 async def analizar_gangas_historicas(resultados):
     """Para rutas sin alerta manual, detecta gangas comparando con historial de Supabase."""
     rutas_sin_alerta = [r for r in resultados if r['alerta_manual'] == 0]
@@ -131,6 +155,17 @@ async def analizar_gangas_historicas(resultados):
     historiales = await asyncio.gather(*tasks)
 
     for r, historico in zip(rutas_sin_alerta, historiales):
+        # Tendencia: historico viene ordenado más reciente primero
+        if len(historico) >= 2:
+            if r['precio'] < historico[0] and historico[0] <= historico[1]:
+                r['tendencia'] = 'bajando'
+            elif r['precio'] > historico[0]:
+                r['tendencia'] = 'subiendo'
+            else:
+                r['tendencia'] = ''
+        else:
+            r['tendencia'] = ''
+
         if len(historico) >= 30:
             mediana_hist = statistics.median(historico)
             bajada_pct = int((1 - r['precio'] / mediana_hist) * 100)
@@ -166,10 +201,15 @@ async def main():
     if run_type == "resumen":
         gangas_hoy = await obtener_resumen_dia()
         if not gangas_hoy:
-            enviar_notificacion_telegram(
-                f"🌙 <b>Resumen del día</b> — {fecha_hora}\n"
-                f"📊 Sin gangas detectadas hoy."
-            )
+            rutas_vistas, mejor_precio = await obtener_stats_dia()
+            msg = f"🌙 <b>Resumen del día</b> — {fecha_hora}\n"
+            if rutas_vistas > 0:
+                msg += f"📊 {rutas_vistas} rutas monitoreadas hoy\n"
+                if mejor_precio:
+                    ruta_l = mejor_precio['ruta'].replace("<", "&lt;").replace(">", "&gt;")
+                    msg += f"✈️ Precio más bajo visto: <b>{ruta_l}</b> — <b>${mejor_precio['precio']} USD</b>\n"
+            msg += f"💤 Sin gangas detectadas hoy"
+            enviar_notificacion_telegram(msg)
             return
         # Deduplicar por ruta, quedar con la de menor precio
         vistas = {}
@@ -283,7 +323,9 @@ async def main():
                 ganga_txt = " <i>← mercado actual</i>"
             else:
                 ganga_txt = ""
-            linea = f"{icono} {ruta_l} — <b>${r['precio']}</b> USD{tipo_txt}{ganga_txt}"
+            tendencia = r.get('tendencia', '')
+            tendencia_txt = " 📉" if tendencia == 'bajando' else " 📈" if tendencia == 'subiendo' else ""
+            linea = f"{icono} {ruta_l} — <b>${r['precio']}</b> USD{tipo_txt}{tendencia_txt}{ganga_txt}"
             if fecha_txt:
                 linea += f" · {fecha_txt}"
             linea += "\n"
@@ -304,9 +346,11 @@ async def main():
                 referencia = f"📉 {r['bajada_pct']}% bajo promedio histórico (${r['mediana_historica']})"
             else:
                 referencia = f"📊 20% bajo el precio de mercado actual"
+            tendencia = r.get('tendencia', '')
+            tendencia_txt = " · 📉 en bajada" if tendencia == 'bajando' else " · 📈 en subida" if tendencia == 'subiendo' else ""
             mensaje += (
                 f"🔥 <b>{ruta_l}</b>\n"
-                f"   💰 <b>${r['precio']} USD</b>{tipo_txt} · {fecha_txt}\n"
+                f"   💰 <b>${r['precio']} USD</b>{tipo_txt} · {fecha_txt}{tendencia_txt}\n"
                 f"   {referencia}\n"
                 f"   🔗 <a href=\"{url_l}\">Ver en Google Flights</a>\n"
                 f"─────────────────\n"

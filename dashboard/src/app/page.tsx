@@ -252,6 +252,7 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete,editing,editData,
               precio.precio_alerta>0&&<p className="text-[10px] text-on-surface-variant">🎯 \${precio.precio_alerta}</p>
             )}
                 {precio.mediana>0&&<p className="text-[10px] text-on-surface-variant">≈ ${precio.mediana}</p>}
+                {hist.length>1&&Math.min(...hist.map(h=>h.precio))<precio.precio&&<p className="text-[10px] text-emerald-700 dark:text-emerald-400">↓ mín ${Math.min(...hist.map(h=>h.precio)).toLocaleString()}</p>}
               </div>
             </div>
             <Sparkline data={hist} ganga={ganga}/>
