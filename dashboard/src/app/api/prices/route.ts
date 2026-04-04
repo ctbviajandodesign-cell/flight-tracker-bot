@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/vuelos_historial?select=*&order=fecha.desc&limit=1000`,
+      `${SUPABASE_URL}/rest/v1/vuelos_historial?select=*&order=fecha.desc&limit=5000`,
       {
         headers: {
           apikey: SUPABASE_KEY,

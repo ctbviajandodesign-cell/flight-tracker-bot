@@ -4,6 +4,7 @@ import csv
 import re
 import statistics
 import requests
+from datetime import datetime
 from io import StringIO
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
@@ -105,7 +106,7 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
                 dia = int(match_fecha.group(1))
                 mes_nombre = match_fecha.group(2)
                 mes_num = meses_es.get(mes_nombre, '00')
-                anio = match_fecha.group(3) if match_fecha.group(3) else (y_ini if meses else "2026")
+                anio = match_fecha.group(3) if match_fecha.group(3) else (y_ini if meses else str(datetime.now().year))
                 fecha_corta = f"{dia:02d}/{mes_num}/{str(anio)[2:]}"
             elif meses:
                 parent_text = e.parent.get_text(separator=' ', strip=True) if e.parent else ""
