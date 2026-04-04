@@ -31,7 +31,7 @@ async def guardar_en_supabase(resultados):
         datos.append({
             "ruta": r['ruta'],
             "precio": r['precio'],
-            "mediana": r.get('mediana', 0),
+            "mediana": r.get('mediana_historica') or r.get('mediana', 0),
             "fecha_vuelo": r['mejores'][0]['detalle'] if r.get('mejores') else "N/D",
             "precio_alerta": r.get('alerta_manual', 0),
             "es_ganga": es_ganga,
