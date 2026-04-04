@@ -903,30 +903,37 @@ export default function Dashboard() {
       </footer>
 
       {/* ── BARRA NAVEGACIÓN INFERIOR — solo móvil ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
-        <div className="bg-background/80 backdrop-blur-2xl border-t border-outline-variant/10 shadow-[0_-8px_32px_rgba(0,0,0,0.08)]">
-          <div className="flex items-center h-[58px] px-2">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden"
+        style={{WebkitBackdropFilter:'blur(20px)', backdropFilter:'blur(20px)'}}>
+        <div className="bg-background/85 border-t border-outline-variant/10"
+          style={{boxShadow:'0 -4px 24px rgba(0,0,0,0.07)'}}>
+          <div className="flex items-center" style={{height:58}}>
             {([
-              {id:'todas' as Vista,  icon:'flight',                  label:'Rutas'},
-              {id:'gangas' as Vista, icon:'local_fire_department',   label:'Gangas'},
-              {id:'comparativa' as Vista, icon:'compare_arrows',    label:'Compara'},
-              {id:'filtros' as const,icon:'tune',                   label:'Filtros'},
+              {id:'todas' as Vista,       icon:'flight',               label:'Rutas'},
+              {id:'gangas' as Vista,      icon:'local_fire_department', label:'Gangas'},
+              {id:'comparativa' as Vista, icon:'compare_arrows',       label:'Compara'},
+              {id:'filtros' as const,     icon:'tune',                 label:'Filtros'},
             ] as const).map(t=>{
               const active=(t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen);
               return (
                 <button key={t.id}
                   onClick={()=>t.id==='filtros'?setSidebarOpen(!sidebarOpen):setVista(t.id as Vista)}
-                  className="flex-1 flex flex-col items-center justify-center gap-0.5 relative active:scale-90 transition-transform">
+                  className="flex-1 flex flex-col items-center justify-center gap-0.5 relative"
+                  style={{WebkitTapHighlightColor:'transparent'}}>
                   {t.id==='gangas'&&totalGangas>0&&(
-                    <span className="absolute top-1.5 right-[calc(50%-12px)] min-w-[16px] h-4 bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 z-10 leading-none">
+                    <span className="absolute bg-amber-500 text-white font-black rounded-full flex items-center justify-center z-10"
+                      style={{top:6,right:'calc(50% - 16px)',minWidth:16,height:16,fontSize:9,padding:'0 4px',lineHeight:1}}>
                       {totalGangas}
                     </span>
                   )}
-                  <div className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-2xl transition-all duration-200 ${active?'bg-primary/12':''}`}>
-                    <span className={`material-symbols-outlined text-[22px] transition-all duration-200 ${active?'text-primary':'text-on-surface-variant'}`}>
+                  <div className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-2xl transition-colors duration-150"
+                    style={{backgroundColor:active?'color-mix(in srgb, var(--color-primary) 12%, transparent)':'transparent'}}>
+                    <span className={`material-symbols-outlined transition-colors duration-150 ${active?'text-primary':'text-on-surface-variant'}`}
+                      style={{fontSize:22}}>
                       {t.icon}
                     </span>
-                    <span className={`text-[10px] font-semibold leading-none transition-all duration-200 ${active?'text-primary':'text-on-surface-variant'}`}>
+                    <span className={`font-semibold transition-colors duration-150 ${active?'text-primary':'text-on-surface-variant'}`}
+                      style={{fontSize:10,lineHeight:1}}>
                       {t.label}
                     </span>
                   </div>
@@ -934,10 +941,12 @@ export default function Dashboard() {
               );
             })}
           </div>
-          <div style={{height:'env(safe-area-inset-bottom)'}} className="bg-background/80"/>
+          {/* Safe area iOS */}
+          <div style={{height:'env(safe-area-inset-bottom)'}}/>
         </div>
       </nav>
-      <div className="h-[calc(58px+env(safe-area-inset-bottom))] md:hidden"/>
+      {/* Espaciador — inline style para que env() funcione */}
+      <div className="md:hidden" style={{height:'calc(58px + env(safe-area-inset-bottom))'}}/>
 
     </div>
   );
