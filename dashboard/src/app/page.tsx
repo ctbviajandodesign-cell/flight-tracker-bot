@@ -559,7 +559,7 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-1.5 ml-auto">
             {ultimaAct&&<FreshBadge fecha={ultimaAct}/>}
-            <button onClick={cargar} className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:text-primary transition">
+            <button onClick={()=>cargar()} className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:text-primary transition">
               <span className="material-symbols-outlined text-[18px]">refresh</span>
             </button>
             {mounted&&(
