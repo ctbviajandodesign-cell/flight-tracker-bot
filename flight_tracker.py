@@ -146,8 +146,8 @@ async def analizar_gangas_historicas(resultados):
 
 
 async def main():
-    ahora_utc = datetime.utcnow()
-    fecha_hora = ahora_utc.strftime('%d/%m/%Y')
+    ahora_ec = datetime.utcnow() - timedelta(hours=5)
+    fecha_hora = ahora_ec.strftime('%d/%m/%Y')
 
     print("🚀 Iniciando rastreo inteligente...")
 
