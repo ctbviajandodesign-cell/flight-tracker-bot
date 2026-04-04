@@ -6,8 +6,8 @@ on:
     - cron: '47 15 * * *'   # 10:47 AM Ecuador → gangas
     - cron: '10 19 * * *'   # 2:10 PM Ecuador  → general
     - cron: '45 21 * * *'   # 4:45 PM Ecuador  → gangas
-    - cron: '0 1 * * *'     # 8:00 PM Ecuador  → resumen
-    - cron: '0 4 * * *'     # 11:00 PM Ecuador → resumen
+    - cron: '11 1 * * *'    # 8:11 PM Ecuador  → resumen
+    - cron: '11 4 * * *'    # 11:11 PM Ecuador → resumen
   workflow_dispatch:
 
 jobs:
