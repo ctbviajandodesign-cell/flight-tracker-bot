@@ -227,13 +227,13 @@ async def main():
     # Definir qué mostrar y con qué título
     if es_reporte_diario and vuelos_ganga:
         titulo = (
-            f"🌐 <b>REPORTE DIARIO CTB</b> — {fecha_hora}\n"
+            f"🌐 <b>REPORTE DIARIO</b> — {fecha_hora}\n"
             f"🚨 <b>{len(vuelos_ganga)} gangas detectadas</b> de {len(resultados)} rutas\n\n"
         )
         vuelos_a_mostrar = resultados
     elif es_reporte_diario:
         titulo = (
-            f"🌐 <b>REPORTE DIARIO CTB</b> — {fecha_hora}\n"
+            f"🌐 <b>REPORTE DIARIO</b> — {fecha_hora}\n"
             f"📊 {len(resultados)} rutas analizadas — sin gangas por ahora\n\n"
         )
         vuelos_a_mostrar = resultados
