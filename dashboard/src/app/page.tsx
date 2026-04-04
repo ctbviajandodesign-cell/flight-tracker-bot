@@ -514,25 +514,27 @@ export default function Dashboard() {
   const totalGangas = rutas.filter(r=>getPrecio(r.origen,r.destino)?.es_ganga).length;
   const ultimaAct = Object.values(precios).sort((a,b)=>new Date(b.fecha).getTime()-new Date(a.fecha).getTime())[0]?.fecha;
 
-  // Regiones con rutas activas, ordenadas — se recalcula automáticamente al agregar destinos
+  // Regiones con destinos únicos — se recalcula automáticamente al agregar destinos
   const regionesActivas: {region:string; cnt:number}[] = (() => {
-    const map = new Map<string,number>();
+    const map = new Map<string,Set<string>>();
     rutas.forEach(r => {
       const reg = getRegion(r.destino);
-      if(reg !== '🇪🇨 Ecuador') map.set(reg, (map.get(reg)||0)+1);
+      if(reg === '🇪🇨 Ecuador') return;
+      if(!map.has(reg)) map.set(reg, new Set());
+      map.get(reg)!.add(r.destino);
     });
-    return Array.from(map.entries()).map(([region,cnt])=>({region,cnt}));
+    return Array.from(map.entries()).map(([region,set])=>({region,cnt:set.size}));
   })();
 
   return (
     <div className="min-h-dvh bg-background text-on-background font-sans overflow-x-hidden">
-      <div className="fixed inset-0 pointer-events-none">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl"/>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-tertiary/4 rounded-full blur-3xl"/>
       </div>
 
       {/* ── TOP BAR ── */}
-      <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-outline-variant/15 w-full">
+      <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-outline-variant/15 w-full overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 flex-shrink-0">
             <img src="/logo_marcka.svg" alt="Marcka" className="h-4 w-auto hidden dark:block"/>
@@ -858,8 +860,12 @@ export default function Dashboard() {
       </footer>
 
       {/* ── BARRA NAVEGACIÓN INFERIOR — solo móvil ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden"
-        style={{WebkitBackdropFilter:'blur(20px)', backdropFilter:'blur(20px)'}}>
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+        style={{
+          WebkitBackdropFilter:'blur(20px)', backdropFilter:'blur(20px)',
+          transform:'translateZ(0)', WebkitTransform:'translateZ(0)',
+          willChange:'transform',
+        }}>
         <div className="bg-background/85 border-t border-outline-variant/10"
           style={{boxShadow:'0 -4px 24px rgba(0,0,0,0.07)'}}>
           <div className="flex items-center" style={{height:58}}>
