@@ -18,45 +18,39 @@ const IATA_MAP: Record<string, string> = {
   PEI:"Pereira", IST:"Estambul", ADZ:"San Andrés", CTG:"Cartagena",
 };
 
-const REGIONES: Record<string, string[]> = {
-  "🏝️ Caribe":    ["PTY","CTG","PUJ","CUR","ADZ"],
-  "🌎 Sudamérica": ["MDE","LIM","SCL","EZE","GIG","PEI","BOG"],
-  "🌍 Europa":     ["MAD","BCN","IST"],
-  "🇺🇸 USA":       ["MIA","MCO","LAX","NYC"],
-  "🇲🇽 México":    ["MEX","CUN"],
-};
-
-const AIRPORTS: {code:string; city:string; country:string; flag:string}[] = [
-  {code:"GYE", city:"Guayaquil",       country:"Ecuador",         flag:"🇪🇨"},
-  {code:"UIO", city:"Quito",           country:"Ecuador",         flag:"🇪🇨"},
-  {code:"CUE", city:"Cuenca",          country:"Ecuador",         flag:"🇪🇨"},
-  {code:"BOG", city:"Bogotá",          country:"Colombia",        flag:"🇨🇴"},
-  {code:"MDE", city:"Medellín",        country:"Colombia",        flag:"🇨🇴"},
-  {code:"CTG", city:"Cartagena",       country:"Colombia",        flag:"🇨🇴"},
-  {code:"PEI", city:"Pereira",         country:"Colombia",        flag:"🇨🇴"},
-  {code:"ADZ", city:"San Andrés",      country:"Colombia",        flag:"🇨🇴"},
-  {code:"PTY", city:"Panamá",          country:"Panamá",          flag:"🇵🇦"},
-  {code:"MIA", city:"Miami",           country:"USA",             flag:"🇺🇸"},
-  {code:"MCO", city:"Orlando",         country:"USA",             flag:"🇺🇸"},
-  {code:"LAX", city:"Los Ángeles",     country:"USA",             flag:"🇺🇸"},
-  {code:"NYC", city:"Nueva York",      country:"USA",             flag:"🇺🇸"},
-  {code:"MAD", city:"Madrid",          country:"España",          flag:"🇪🇸"},
-  {code:"BCN", city:"Barcelona",       country:"España",          flag:"🇪🇸"},
-  {code:"LIM", city:"Lima",            country:"Perú",            flag:"🇵🇪"},
-  {code:"SCL", city:"Santiago",        country:"Chile",           flag:"🇨🇱"},
-  {code:"EZE", city:"Buenos Aires",    country:"Argentina",       flag:"🇦🇷"},
-  {code:"GIG", city:"Río de Janeiro",  country:"Brasil",          flag:"🇧🇷"},
-  {code:"MEX", city:"Ciudad de México",country:"México",          flag:"🇲🇽"},
-  {code:"CUN", city:"Cancún",          country:"México",          flag:"🇲🇽"},
-  {code:"PUJ", city:"Punta Cana",      country:"Rep. Dominicana", flag:"🇩🇴"},
-  {code:"CUR", city:"Curazao",         country:"Curazao",         flag:"🇨🇼"},
-  {code:"IST", city:"Estambul",        country:"Turquía",         flag:"🇹🇷"},
+// ── AIRPORTS — fuente única de verdad: agregar un aeropuerto aquí lo pone automáticamente en su región ──
+const AIRPORTS: {code:string; city:string; country:string; flag:string; region:string}[] = [
+  {code:"GYE", city:"Guayaquil",       country:"Ecuador",         flag:"🇪🇨", region:"🇪🇨 Ecuador"},
+  {code:"UIO", city:"Quito",           country:"Ecuador",         flag:"🇪🇨", region:"🇪🇨 Ecuador"},
+  {code:"CUE", city:"Cuenca",          country:"Ecuador",         flag:"🇪🇨", region:"🇪🇨 Ecuador"},
+  {code:"BOG", city:"Bogotá",          country:"Colombia",        flag:"🇨🇴", region:"🌎 Colombia"},
+  {code:"MDE", city:"Medellín",        country:"Colombia",        flag:"🇨🇴", region:"🌎 Colombia"},
+  {code:"CTG", city:"Cartagena",       country:"Colombia",        flag:"🇨🇴", region:"🌎 Colombia"},
+  {code:"PEI", city:"Pereira",         country:"Colombia",        flag:"🇨🇴", region:"🌎 Colombia"},
+  {code:"ADZ", city:"San Andrés",      country:"Colombia",        flag:"🇨🇴", region:"🏝️ Caribe"},
+  {code:"PTY", city:"Panamá",          country:"Panamá",          flag:"🇵🇦", region:"🏝️ Caribe"},
+  {code:"PUJ", city:"Punta Cana",      country:"Rep. Dominicana", flag:"🇩🇴", region:"🏝️ Caribe"},
+  {code:"CUR", city:"Curazao",         country:"Curazao",         flag:"🇨🇼", region:"🏝️ Caribe"},
+  {code:"MIA", city:"Miami",           country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
+  {code:"MCO", city:"Orlando",         country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
+  {code:"LAX", city:"Los Ángeles",     country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
+  {code:"NYC", city:"Nueva York",      country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
+  {code:"MAD", city:"Madrid",          country:"España",          flag:"🇪🇸", region:"🌍 Europa"},
+  {code:"BCN", city:"Barcelona",       country:"España",          flag:"🇪🇸", region:"🌍 Europa"},
+  {code:"IST", city:"Estambul",        country:"Turquía",         flag:"🇹🇷", region:"🌍 Europa"},
+  {code:"LIM", city:"Lima",            country:"Perú",            flag:"🇵🇪", region:"🌎 Sudamérica"},
+  {code:"SCL", city:"Santiago",        country:"Chile",           flag:"🇨🇱", region:"🌎 Sudamérica"},
+  {code:"EZE", city:"Buenos Aires",    country:"Argentina",       flag:"🇦🇷", region:"🌎 Sudamérica"},
+  {code:"GIG", city:"Río de Janeiro",  country:"Brasil",          flag:"🇧🇷", region:"🌎 Sudamérica"},
+  {code:"MEX", city:"Ciudad de México",country:"México",          flag:"🇲🇽", region:"🇲🇽 México"},
+  {code:"CUN", city:"Cancún",          country:"México",          flag:"🇲🇽", region:"🇲🇽 México"},
 ];
 
 const getCityName = (c: string) => IATA_MAP[c.toUpperCase()] || "Internacional";
 const toEC = (f: string) => new Date(new Date(f).getTime() - 5*3600000);
 const fmtEC = (f: string) => toEC(f).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-const getRegion = (d: string) => Object.entries(REGIONES).find(([,c])=>c.includes(d))?.[0] || "🌐 Otros";
+// Deriva la región directo del array AIRPORTS — si se agrega un aeropuerto con su region ya queda clasificado
+const getRegion = (d: string) => AIRPORTS.find(a=>a.code===d.toUpperCase())?.region ?? "🌐 Otros";
 
 type PrecioData = {
   id:number; ruta:string; precio:number; mediana:number;
@@ -424,7 +418,7 @@ export default function Dashboard() {
   const [expandido, setExpandido] = useState<string|null>(null);
   const [editando, setEditando] = useState<string|null>(null);
   const [editData, setEditData] = useState<any>({});
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // usado solo en md+ futuro
   const [mostrarForm, setMostrarForm] = useState(false);
   const [nuevoVuelo, setNuevoVuelo] = useState({origen:'',destino:'',ida:'',vuelta:'',alerta:'',dias_paquete:'',pais_destino:''});
   const [tipoFecha, setTipoFecha] = useState<'mes'|'exacta'>('mes');
@@ -506,18 +500,29 @@ export default function Dashboard() {
   const rutasFiltradas = rutas.filter(r=>{
     const p=getPrecio(r.origen,r.destino);
     if(vista==='gangas'&&!p?.es_ganga)return false;
-    if(filtroRegion&&!(REGIONES[filtroRegion]||[]).includes(r.destino))return false;
+    if(filtroRegion&&getRegion(r.destino)!==filtroRegion)return false;
     if(filtroOrigen&&r.origen!==filtroOrigen)return false;
     if(busqueda){
       const t=busqueda.toLowerCase();
       return r.origen.toLowerCase().includes(t)||r.destino.toLowerCase().includes(t)||
-        getCityName(r.origen).toLowerCase().includes(t)||getCityName(r.destino).toLowerCase().includes(t);
+        getCityName(r.origen).toLowerCase().includes(t)||getCityName(r.destino).toLowerCase().includes(t)||
+        (r.pais_destino||'').toLowerCase().includes(t);
     }
     return true;
   });
 
   const totalGangas = rutas.filter(r=>getPrecio(r.origen,r.destino)?.es_ganga).length;
   const ultimaAct = Object.values(precios).sort((a,b)=>new Date(b.fecha).getTime()-new Date(a.fecha).getTime())[0]?.fecha;
+
+  // Regiones con rutas activas, ordenadas — se recalcula automáticamente al agregar destinos
+  const regionesActivas: {region:string; cnt:number}[] = (() => {
+    const map = new Map<string,number>();
+    rutas.forEach(r => {
+      const reg = getRegion(r.destino);
+      if(reg !== '🇪🇨 Ecuador') map.set(reg, (map.get(reg)||0)+1);
+    });
+    return Array.from(map.entries()).map(([region,cnt])=>({region,cnt}));
+  })();
 
   return (
     <div className="min-h-dvh bg-background text-on-background font-sans overflow-x-hidden">
@@ -570,16 +575,46 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Buscador móvil */}
-        <div className="md:hidden px-3 pb-3">
+        {/* Buscador + filtros pill — móvil */}
+        <div className="md:hidden px-3 pb-2 space-y-2">
+          {/* Buscador */}
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[15px]">search</span>
             <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
-              placeholder="Buscar destino..."
+              placeholder="Buscar destino, ciudad o país..."
               className="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-2 pl-9 pr-8 text-sm outline-none focus:border-primary transition"/>
             {busqueda&&<button onClick={()=>setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
               <span className="material-symbols-outlined text-[15px]">close</span>
             </button>}
+          </div>
+          {/* Pills de filtro — siempre visibles, scroll horizontal */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1"
+            style={{scrollbarWidth:'none', WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
+            {/* Todos */}
+            <button onClick={()=>{setFiltroRegion(null);setFiltroOrigen(null);}}
+              className={`flex-shrink-0 h-7 px-3 rounded-full text-[11px] font-bold border transition-all
+                ${!filtroRegion&&!filtroOrigen?'bg-primary text-white border-primary shadow-sm shadow-primary/30':'bg-surface-container-low border-outline-variant/20 text-on-surface-variant'}`}>
+              Todos
+            </button>
+            {/* Origen */}
+            {(['GYE','UIO'] as const).map(org=>(
+              <button key={org} onClick={()=>setFiltroOrigen(filtroOrigen===org?null:org)}
+                className={`flex-shrink-0 h-7 px-3 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1
+                  ${filtroOrigen===org?'bg-primary text-white border-primary shadow-sm shadow-primary/30':'bg-surface-container-low border-outline-variant/20 text-on-surface-variant'}`}>
+                ✈ {org}
+              </button>
+            ))}
+            {/* Separador visual */}
+            <div className="flex-shrink-0 w-px bg-outline-variant/20 my-1"/>
+            {/* Regiones activas — auto-generadas */}
+            {regionesActivas.map(({region,cnt})=>(
+              <button key={region} onClick={()=>setFiltroRegion(filtroRegion===region?null:region)}
+                className={`flex-shrink-0 h-7 px-3 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1
+                  ${filtroRegion===region?'bg-primary text-white border-primary shadow-sm shadow-primary/30':'bg-surface-container-low border-outline-variant/20 text-on-surface-variant'}`}>
+                {region}
+                <span className={`text-[9px] font-black px-1 rounded-full ${filtroRegion===region?'bg-white/20':'bg-surface-container'}`}>{cnt}</span>
+              </button>
+            ))}
           </div>
         </div>
       </header>
@@ -688,22 +723,14 @@ export default function Dashboard() {
                     ${!filtroRegion?'bg-primary/15 text-primary border border-primary/20':'text-on-surface-variant hover:bg-surface-container'}`}>
                   Todas
                 </button>
-                {(()=>{
-                  const assigned=Object.values(REGIONES).flat();
-                  const otrosCnt=rutas.filter(ru=>!assigned.includes(ru.destino)).length;
-                  const regs=[
-                    ...Object.keys(REGIONES).map(r=>({r,cnt:rutas.filter(ru=>REGIONES[r].includes(ru.destino)).length})).filter(x=>x.cnt>0),
-                    ...(otrosCnt>0?[{r:'🌐 Otros',cnt:otrosCnt}]:[]),
-                  ];
-                  return regs.map(({r,cnt})=>(
-                    <button key={r} onClick={()=>setFiltroRegion(filtroRegion===r?null:r)}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition flex justify-between
-                        ${filtroRegion===r?'bg-primary/15 text-primary border border-primary/20':'text-on-surface-variant hover:bg-surface-container'}`}>
-                      <span>{r}</span>
-                      <span className={`text-[10px] px-1.5 rounded-full ${filtroRegion===r?'bg-primary/20':'bg-surface-container'}`}>{cnt}</span>
-                    </button>
-                  ));
-                })()}
+                {regionesActivas.map(({region,cnt})=>(
+                  <button key={region} onClick={()=>setFiltroRegion(filtroRegion===region?null:region)}
+                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition flex justify-between
+                      ${filtroRegion===region?'bg-primary/15 text-primary border border-primary/20':'text-on-surface-variant hover:bg-surface-container'}`}>
+                    <span>{region}</span>
+                    <span className={`text-[10px] px-1.5 rounded-full ${filtroRegion===region?'bg-primary/20':'bg-surface-container'}`}>{cnt}</span>
+                  </button>
+                ))}
               </div>
             </div>
             {mounted&&(
@@ -728,79 +755,7 @@ export default function Dashboard() {
         </aside>
 
         {/* DRAWER MÓVIL — siempre en DOM, transición CSS */}
-        <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ${sidebarOpen?'pointer-events-auto':'pointer-events-none'}`}>
-          <div
-            className="absolute inset-0 bg-black/50 transition-opacity duration-300"
-            style={{opacity:sidebarOpen?1:0}}
-            onClick={()=>setSidebarOpen(false)}
-          />
-          <div
-            className="absolute left-0 right-0 bottom-0 bg-surface-container-lowest rounded-t-[28px] shadow-2xl transition-transform duration-300 ease-out overflow-hidden"
-            style={{transform:sidebarOpen?'translateY(0)':'translateY(100%)', paddingBottom:'calc(env(safe-area-inset-bottom) + 72px)', maxHeight:'88vh'}}>
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="w-9 h-1 bg-outline-variant/40 rounded-full"/>
-            </div>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-outline-variant/10">
-              <p className="font-bold text-base">Filtros</p>
-              {(filtroRegion||filtroOrigen||busqueda)&&(
-                <button onClick={()=>{setFiltroRegion(null);setFiltroOrigen(null);setBusqueda('');}}
-                  className="text-xs text-rose-400 font-semibold">✕ Limpiar</button>
-              )}
-            </div>
-            <div className="overflow-y-auto" style={{maxHeight:'calc(88vh - 100px)'}}>
-              <div className="px-5 py-4 space-y-5">
-                {/* Origen */}
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2.5">Origen</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[{id:null as string|null,label:'Todos'},{id:'GYE',label:'✈ GYE'},{id:'UIO',label:'✈ UIO'}].map(o=>(
-                      <button key={String(o.id)} onClick={()=>setFiltroOrigen(filtroOrigen===o.id?null:o.id)}
-                        className={`py-2.5 rounded-2xl text-xs font-bold transition-all border
-                          ${filtroOrigen===o.id
-                            ?'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                            :'bg-surface-container text-on-surface-variant border-outline-variant/15 hover:border-primary/30'}`}>
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Región */}
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2.5">Región</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(()=>{
-                      const assigned=Object.values(REGIONES).flat();
-                      const otrosCnt=rutas.filter(ru=>!assigned.includes(ru.destino)).length;
-                      const regs:{id:string|null,label:string}[]=[{id:null,label:'🌐 Todas'}];
-                      Object.keys(REGIONES).forEach(r=>{
-                        if(rutas.some(ru=>REGIONES[r].includes(ru.destino)))regs.push({id:r,label:r});
-                      });
-                      if(otrosCnt>0)regs.push({id:'🌐 Otros',label:'🌐 Otros'});
-                      return regs.map(r=>(
-                        <button key={String(r.id)} onClick={()=>setFiltroRegion(filtroRegion===r.id?null:r.id)}
-                          className={`py-2.5 px-3 rounded-2xl text-xs font-bold transition-all border text-left
-                            ${filtroRegion===r.id
-                              ?'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                              :'bg-surface-container text-on-surface-variant border-outline-variant/15 hover:border-primary/30'}`}>
-                          {r.label}
-                        </button>
-                      ));
-                    })()}
-                  </div>
-                </div>
-              </div>
-              {/* CTA */}
-              <div className="px-5 pb-4">
-                <button onClick={()=>setSidebarOpen(false)}
-                  className="w-full py-3.5 text-sm font-bold bg-primary text-white rounded-2xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-transform">
-                  Ver {rutasFiltradas.length} ruta{rutasFiltradas.length!==1?'s':''}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Drawer móvil eliminado — filtros ahora en barra de pills del header */}
 
         {/* CONTENIDO */}
         <main className="flex-1 min-w-0 w-full overflow-hidden">
@@ -909,15 +864,14 @@ export default function Dashboard() {
           style={{boxShadow:'0 -4px 24px rgba(0,0,0,0.07)'}}>
           <div className="flex items-center" style={{height:58}}>
             {([
-              {id:'todas' as Vista,       icon:'flight',               label:'Rutas'},
+              {id:'todas' as Vista,       icon:'flight',                label:'Rutas'},
               {id:'gangas' as Vista,      icon:'local_fire_department', label:'Gangas'},
               {id:'comparativa' as Vista, icon:'compare_arrows',       label:'Compara'},
-              {id:'filtros' as const,     icon:'tune',                 label:'Filtros'},
             ] as const).map(t=>{
-              const active=(t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen);
+              const active = vista===t.id;
               return (
                 <button key={t.id}
-                  onClick={()=>t.id==='filtros'?setSidebarOpen(!sidebarOpen):setVista(t.id as Vista)}
+                  onClick={()=>setVista(t.id)}
                   className="flex-1 flex flex-col items-center justify-center gap-0.5 relative"
                   style={{WebkitTapHighlightColor:'transparent'}}>
                   {t.id==='gangas'&&totalGangas>0&&(
@@ -926,7 +880,7 @@ export default function Dashboard() {
                       {totalGangas}
                     </span>
                   )}
-                  <div className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-2xl transition-colors duration-150"
+                  <div className="flex flex-col items-center gap-0.5 px-5 py-1 rounded-2xl transition-colors duration-150"
                     style={{backgroundColor:active?'color-mix(in srgb, var(--color-primary) 12%, transparent)':'transparent'}}>
                     <span className={`material-symbols-outlined transition-colors duration-150 ${active?'text-primary':'text-on-surface-variant'}`}
                       style={{fontSize:22}}>
