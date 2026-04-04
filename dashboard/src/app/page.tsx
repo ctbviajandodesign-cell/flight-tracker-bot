@@ -463,7 +463,12 @@ export default function Dashboard() {
     finally { setCargando(false); }
   };
 
-  useEffect(()=>{setMounted(true);cargar();},[]);
+  useEffect(()=>{
+    setMounted(true);
+    cargar();
+    const interval = setInterval(cargar, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  },[]);
 
   const getPrecio = (o:string,d:string) => precios[`${o} -> ${d}`]||precios[`${o} ➡️ ${d}`]||null;
   const getHist = (o:string,d:string) => historial[`${o} -> ${d}`]||historial[`${o} ➡️ ${d}`]||[];
