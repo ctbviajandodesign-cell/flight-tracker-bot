@@ -29,16 +29,13 @@ jobs:
           pip install httpx
           playwright install chromium
 
-      - name: Determinar RUN_TYPE por hora Ecuador
+      - name: Determinar RUN_TYPE
         run: |
-          HOUR=$(TZ=America/Guayaquil date +%-H)
-          if [ "$HOUR" -eq 6 ] || [ "$HOUR" -eq 14 ]; then
-            echo "RUN_TYPE=general" >> $GITHUB_ENV
-          elif [ "$HOUR" -eq 20 ] || [ "$HOUR" -eq 23 ]; then
-            echo "RUN_TYPE=resumen" >> $GITHUB_ENV
-          else
-            echo "RUN_TYPE=gangas" >> $GITHUB_ENV
-          fi
+          case "${{ github.event.schedule }}" in
+            "17 11 * * *"|"10 19 * * *") echo "RUN_TYPE=general" >> $GITHUB_ENV ;;
+            "11 1 * * *")                echo "RUN_TYPE=resumen" >> $GITHUB_ENV ;;
+            *)                           echo "RUN_TYPE=gangas"  >> $GITHUB_ENV ;;
+          esac
 
       - name: Run Flight Tracker
         env:
