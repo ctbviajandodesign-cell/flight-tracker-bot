@@ -2,11 +2,12 @@ name: Daily Flight Tracker
 
 on:
   schedule:
-    - cron: '17 11 * * *'   # 6:17 AM Ecuador  → GENERAL (llega ~6:30 AM)
-    - cron: '47 15 * * *'   # 10:47 AM Ecuador → SOLO GANGAS (llega ~11:00 AM)
-    - cron: '10 19 * * *'   # 2:10 PM Ecuador  → GENERAL (llega ~2:30 PM)
-    - cron: '45 21 * * *'   # 4:45 PM Ecuador  → SOLO GANGAS (llega ~5:00 PM)
-    - cron: '0 2 * * *'    # 9:00 PM Ecuador  → RESUMEN DEL DÍA
+    - cron: '17 11 * * *'   # 6:17 AM Ecuador  → general
+    - cron: '47 15 * * *'   # 10:47 AM Ecuador → gangas
+    - cron: '10 19 * * *'   # 2:10 PM Ecuador  → general
+    - cron: '45 21 * * *'   # 4:45 PM Ecuador  → gangas
+    - cron: '0 1 * * *'     # 8:00 PM Ecuador  → resumen
+    - cron: '0 4 * * *'     # 11:00 PM Ecuador → resumen
   workflow_dispatch:
 
 jobs:
@@ -29,6 +30,17 @@ jobs:
           pip install httpx
           playwright install chromium
 
+      - name: Determinar RUN_TYPE por hora Ecuador
+        run: |
+          HOUR=$(TZ=America/Guayaquil date +%-H)
+          if [ "$HOUR" -eq 6 ] || [ "$HOUR" -eq 14 ]; then
+            echo "RUN_TYPE=general" >> $GITHUB_ENV
+          elif [ "$HOUR" -eq 20 ] || [ "$HOUR" -eq 23 ]; then
+            echo "RUN_TYPE=resumen" >> $GITHUB_ENV
+          else
+            echo "RUN_TYPE=gangas" >> $GITHUB_ENV
+          fi
+
       - name: Run Flight Tracker
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -36,5 +48,5 @@ jobs:
           GOOGLE_SHEETS_URL: ${{ secrets.GOOGLE_SHEETS_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          RUN_TYPE: ${{ github.event.schedule == '0 2 * * *' && 'resumen' || (github.event.schedule == '17 11 * * *' || github.event.schedule == '10 19 * * *') && 'general' || 'gangas' }}
+          RUN_TYPE: ${{ env.RUN_TYPE }}
         run: python flight_tracker.py
