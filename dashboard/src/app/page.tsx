@@ -67,7 +67,7 @@ type HistorialEntry = {fecha:string; precio:number; es_ganga:boolean};
 type Vista = 'todas' | 'gangas' | 'comparativa';
 
 function FreshBadge({fecha}:{fecha:string}) {
-  const hrs = (Date.now()-new Date(fecha).getTime())/3600000-5;
+  const hrs = (Date.now()-new Date(fecha).getTime())/3600000;
   const cfg = hrs<4
     ? {cls:'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20', dot:'bg-emerald-500', lbl:'reciente'}
     : hrs<12
@@ -443,9 +443,9 @@ export default function Dashboard() {
     cargar();
   };
 
-  const cargar = async () => {
+  const cargar = async (silencioso = false) => {
     try {
-      setCargando(true);
+      if (!silencioso) setCargando(true);
       const [r1,r2] = await Promise.all([fetch('/api/flights'),fetch('/api/prices')]);
       const d1=await r1.json(), d2=await r2.json();
       if (d1.success) setRutas(d1.flights);
@@ -460,13 +460,13 @@ export default function Dashboard() {
       }
       setErrorSync('');
     } catch(e:any) { setErrorSync(e.message); }
-    finally { setCargando(false); }
+    finally { if (!silencioso) setCargando(false); }
   };
 
   useEffect(()=>{
     setMounted(true);
     cargar();
-    const interval = setInterval(cargar, 30 * 60 * 1000);
+    const interval = setInterval(()=>cargar(true), 30 * 60 * 1000);
     return () => clearInterval(interval);
   },[]);
 
