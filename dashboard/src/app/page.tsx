@@ -192,9 +192,9 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete,editing,editData,
                   {ganga&&<span className="text-[9px] font-black text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">🔥</span>}
                 </div>
               )}
-              <p className="text-[10px] text-on-surface-variant">
+              <p className="text-[10px] text-on-surface-variant truncate max-w-[160px]">
                 {getCityName(editing?val('origen'):ruta.origen)} → {getCityName(editing?val('destino'):ruta.destino)}
-                {ruta.pais_destino&&<span className="ml-1 text-on-surface-variant/50">· {ruta.pais_destino}</span>}
+                {ruta.pais_destino&&<span className="text-on-surface-variant/50"> · {ruta.pais_destino}</span>}
               </p>
             </div>
           </div>
@@ -558,7 +558,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-1.5 ml-auto">
-            {ultimaAct&&<FreshBadge fecha={ultimaAct}/>}
+            <span className="hidden sm:flex"><FreshBadge fecha={ultimaAct||''}/></span>
             <button onClick={()=>cargar()} className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:text-primary transition">
               <span className="material-symbols-outlined text-[18px]">refresh</span>
             </button>
@@ -571,14 +571,14 @@ export default function Dashboard() {
         </div>
 
         {/* Buscador móvil */}
-        <div className="md:hidden px-3 pb-2">
+        <div className="md:hidden px-3 pb-3">
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">search</span>
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[15px]">search</span>
             <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
-              placeholder="Buscar destino o ciudad..."
-              className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-9 pr-8 text-sm outline-none focus:border-primary transition"/>
+              placeholder="Buscar destino..."
+              className="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-2 pl-9 pr-8 text-sm outline-none focus:border-primary transition"/>
             {busqueda&&<button onClick={()=>setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
-              <span className="material-symbols-outlined text-[16px]">close</span>
+              <span className="material-symbols-outlined text-[15px]">close</span>
             </button>}
           </div>
         </div>
@@ -657,7 +657,7 @@ export default function Dashboard() {
       )}
 
       {/* ── LAYOUT PRINCIPAL ── */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 flex gap-5 relative z-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 flex gap-5 relative z-10 overflow-x-hidden w-full">
 
         {/* SIDEBAR DESKTOP */}
         <aside className="hidden md:block w-52 flex-shrink-0">
@@ -727,28 +727,48 @@ export default function Dashboard() {
           </div>
         </aside>
 
-        {/* DRAWER MÓVIL */}
-        {sidebarOpen&&(
-          <div className="fixed inset-0 z-50 md:hidden">
-            <div className="absolute inset-0 bg-black/50" onClick={()=>setSidebarOpen(false)}/>
-            <div className="absolute bottom-16 left-0 right-0 bg-background rounded-t-3xl p-5 max-h-[75vh] overflow-y-auto">
-              <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-5"/>
-              <p className="font-bold text-base mb-4">Filtros</p>
-              <div className="space-y-4">
+        {/* DRAWER MÓVIL — siempre en DOM, transición CSS */}
+        <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ${sidebarOpen?'pointer-events-auto':'pointer-events-none'}`}>
+          <div
+            className="absolute inset-0 bg-black/50 transition-opacity duration-300"
+            style={{opacity:sidebarOpen?1:0}}
+            onClick={()=>setSidebarOpen(false)}
+          />
+          <div
+            className="absolute left-0 right-0 bottom-0 bg-surface-container-lowest rounded-t-[28px] shadow-2xl transition-transform duration-300 ease-out overflow-hidden"
+            style={{transform:sidebarOpen?'translateY(0)':'translateY(100%)', paddingBottom:'calc(env(safe-area-inset-bottom) + 72px)', maxHeight:'88vh'}}>
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-9 h-1 bg-outline-variant/40 rounded-full"/>
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-outline-variant/10">
+              <p className="font-bold text-base">Filtros</p>
+              {(filtroRegion||filtroOrigen||busqueda)&&(
+                <button onClick={()=>{setFiltroRegion(null);setFiltroOrigen(null);setBusqueda('');}}
+                  className="text-xs text-rose-400 font-semibold">✕ Limpiar</button>
+              )}
+            </div>
+            <div className="overflow-y-auto" style={{maxHeight:'calc(88vh - 100px)'}}>
+              <div className="px-5 py-4 space-y-5">
+                {/* Origen */}
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Origen</p>
-                  <div className="flex gap-2">
-                    {[{id:null,label:'Todos'},{id:'GYE',label:'GYE · Guayaquil'},{id:'UIO',label:'UIO · Quito'}].map(o=>(
+                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2.5">Origen</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[{id:null as string|null,label:'Todos'},{id:'GYE',label:'✈ GYE'},{id:'UIO',label:'✈ UIO'}].map(o=>(
                       <button key={String(o.id)} onClick={()=>setFiltroOrigen(filtroOrigen===o.id?null:o.id)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition border
-                          ${filtroOrigen===o.id?'bg-primary text-white border-primary':'bg-surface-container text-on-surface-variant border-outline-variant/20'}`}>
+                        className={`py-2.5 rounded-2xl text-xs font-bold transition-all border
+                          ${filtroOrigen===o.id
+                            ?'bg-primary text-white border-primary shadow-md shadow-primary/20'
+                            :'bg-surface-container text-on-surface-variant border-outline-variant/15 hover:border-primary/30'}`}>
                         {o.label}
                       </button>
                     ))}
                   </div>
                 </div>
+                {/* Región */}
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Región</p>
+                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2.5">Región</p>
                   <div className="grid grid-cols-2 gap-2">
                     {(()=>{
                       const assigned=Object.values(REGIONES).flat();
@@ -760,28 +780,27 @@ export default function Dashboard() {
                       if(otrosCnt>0)regs.push({id:'🌐 Otros',label:'🌐 Otros'});
                       return regs.map(r=>(
                         <button key={String(r.id)} onClick={()=>setFiltroRegion(filtroRegion===r.id?null:r.id)}
-                          className={`py-2.5 px-3 rounded-xl text-xs font-bold transition border text-left
-                            ${filtroRegion===r.id?'bg-primary text-white border-primary':'bg-surface-container text-on-surface-variant border-outline-variant/20'}`}>
+                          className={`py-2.5 px-3 rounded-2xl text-xs font-bold transition-all border text-left
+                            ${filtroRegion===r.id
+                              ?'bg-primary text-white border-primary shadow-md shadow-primary/20'
+                              :'bg-surface-container text-on-surface-variant border-outline-variant/15 hover:border-primary/30'}`}>
                           {r.label}
                         </button>
                       ));
                     })()}
                   </div>
                 </div>
-                {(filtroRegion||filtroOrigen||busqueda)&&(
-                  <button onClick={()=>{setFiltroRegion(null);setFiltroOrigen(null);setBusqueda('');setSidebarOpen(false);}}
-                    className="w-full py-3 text-sm font-bold text-rose-400 border border-rose-400/20 rounded-xl">
-                    ✕ Limpiar filtros
-                  </button>
-                )}
+              </div>
+              {/* CTA */}
+              <div className="px-5 pb-4">
                 <button onClick={()=>setSidebarOpen(false)}
-                  className="w-full py-3 text-sm font-bold bg-primary text-white rounded-xl">
-                  Ver {rutasFiltradas.length} rutas
+                  className="w-full py-3.5 text-sm font-bold bg-primary text-white rounded-2xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-transform">
+                  Ver {rutasFiltradas.length} ruta{rutasFiltradas.length!==1?'s':''}
                 </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* CONTENIDO */}
         <main className="flex-1 min-w-0 w-full overflow-hidden">
@@ -814,7 +833,7 @@ export default function Dashboard() {
                           <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">{org} → {dest}</p>
                           {p?(
                             <>
-                              <p className={`text-xl font-black ${p.es_ganga?'text-amber-700 dark:text-amber-400':barato===org?'text-emerald-700 dark:text-emerald-400':'text-on-background'}`}>
+                              <p className={`text-lg font-black leading-tight ${p.es_ganga?'text-amber-700 dark:text-amber-400':barato===org?'text-emerald-700 dark:text-emerald-400':'text-on-background'}`}>
                                 ${p.precio.toLocaleString()} <span className="text-xs font-normal text-on-surface-variant">USD</span>
                               </p>
                               {p.fecha_vuelo&&p.fecha_vuelo!=='N/D'&&<p className="text-[10px] text-on-surface-variant mt-0.5">📅 {p.fecha_vuelo}</p>}
@@ -884,37 +903,41 @@ export default function Dashboard() {
       </footer>
 
       {/* ── BARRA NAVEGACIÓN INFERIOR — solo móvil ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-xl border-t border-outline-variant/15">
-        <div className="flex items-stretch h-16 px-1">
-          {[
-            {id:'todas' as Vista, icon:'flight', label:'Rutas'},
-            {id:'gangas' as Vista, icon:'local_fire_department', label:'Gangas'},
-            {id:'comparativa' as Vista, icon:'compare_arrows', label:'vs GYE/UIO'},
-            {id:'filtros' as const, icon:'tune', label:'Filtros'},
-          ].map(t=>(
-            <button key={t.id}
-              onClick={()=>t.id==='filtros'?setSidebarOpen(!sidebarOpen):setVista(t.id as Vista)}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-all active:scale-95
-                ${(t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen)
-                  ?'text-primary'
-                  :'text-on-surface-variant'
-                }`}>
-              {t.id==='gangas'&&totalGangas>0&&(
-                <span className="absolute top-2 right-[calc(50%-14px)] w-4 h-4 bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center z-10">
-                  {totalGangas}
-                </span>
-              )}
-              <span className="material-symbols-outlined text-[22px]">{t.icon}</span>
-              <span className="text-[10px] font-semibold leading-none">{t.label}</span>
-              {((t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen))&&(
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"/>
-              )}
-            </button>
-          ))}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
+        <div className="bg-background/80 backdrop-blur-2xl border-t border-outline-variant/10 shadow-[0_-8px_32px_rgba(0,0,0,0.08)]">
+          <div className="flex items-center h-[58px] px-2">
+            {([
+              {id:'todas' as Vista,  icon:'flight',                  label:'Rutas'},
+              {id:'gangas' as Vista, icon:'local_fire_department',   label:'Gangas'},
+              {id:'comparativa' as Vista, icon:'compare_arrows',    label:'Compara'},
+              {id:'filtros' as const,icon:'tune',                   label:'Filtros'},
+            ] as const).map(t=>{
+              const active=(t.id!=='filtros'&&vista===t.id)||(t.id==='filtros'&&sidebarOpen);
+              return (
+                <button key={t.id}
+                  onClick={()=>t.id==='filtros'?setSidebarOpen(!sidebarOpen):setVista(t.id as Vista)}
+                  className="flex-1 flex flex-col items-center justify-center gap-0.5 relative active:scale-90 transition-transform">
+                  {t.id==='gangas'&&totalGangas>0&&(
+                    <span className="absolute top-1.5 right-[calc(50%-12px)] min-w-[16px] h-4 bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 z-10 leading-none">
+                      {totalGangas}
+                    </span>
+                  )}
+                  <div className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-2xl transition-all duration-200 ${active?'bg-primary/12':''}`}>
+                    <span className={`material-symbols-outlined text-[22px] transition-all duration-200 ${active?'text-primary':'text-on-surface-variant'}`}>
+                      {t.icon}
+                    </span>
+                    <span className={`text-[10px] font-semibold leading-none transition-all duration-200 ${active?'text-primary':'text-on-surface-variant'}`}>
+                      {t.label}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{height:'env(safe-area-inset-bottom)'}} className="bg-background/80"/>
         </div>
-        <div style={{height:'env(safe-area-inset-bottom)'}} className="bg-background/95"/>
       </nav>
-      <div className="h-20 md:hidden"/>
+      <div className="h-[calc(58px+env(safe-area-inset-bottom))] md:hidden"/>
 
     </div>
   );
