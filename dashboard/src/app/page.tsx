@@ -527,7 +527,7 @@ export default function Dashboard() {
   })();
 
   return (
-    <div className="min-h-dvh bg-background text-on-background font-sans overflow-x-hidden">
+    <div id="app-root" className="min-h-screen bg-background text-on-background font-sans overflow-x-hidden">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl"/>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-tertiary/4 rounded-full blur-3xl"/>
@@ -620,6 +620,9 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* Área scrolleable — en móvil hace flex:1 + overflow-y:auto via CSS */}
+      <div id="scroll-area">
 
       {/* ── FORMULARIO ── */}
       {mostrarForm&&(
@@ -859,13 +862,12 @@ export default function Dashboard() {
         </p>
       </footer>
 
-      {/* ── BARRA NAVEGACIÓN INFERIOR — solo móvil ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
-        style={{
-          WebkitBackdropFilter:'blur(20px)', backdropFilter:'blur(20px)',
-          transform:'translateZ(0)', WebkitTransform:'translateZ(0)',
-          willChange:'transform',
-        }}>
+      </div>{/* /scroll-area */}
+
+      {/* ── BARRA NAVEGACIÓN INFERIOR — flex child en móvil (no position:fixed) ── */}
+      <nav className="md:hidden z-40"
+        style={{flexShrink:0, WebkitBackdropFilter:'blur(16px)', backdropFilter:'blur(16px)'}}>
+
         <div className="bg-background/85 border-t border-outline-variant/10"
           style={{boxShadow:'0 -4px 24px rgba(0,0,0,0.07)'}}>
           <div className="flex items-center" style={{height:58}}>
@@ -905,8 +907,6 @@ export default function Dashboard() {
           <div style={{height:'env(safe-area-inset-bottom)'}}/>
         </div>
       </nav>
-      {/* Espaciador — inline style para que env() funcione */}
-      <div className="md:hidden" style={{height:'calc(58px + env(safe-area-inset-bottom))'}}/>
 
     </div>
   );
