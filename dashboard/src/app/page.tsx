@@ -300,7 +300,7 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete,editing,editData,
             </span>
           )}
           {ganga&&precio?.precio_alerta>0&&<span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/15 px-2 py-0.5 rounded-full">✓ bajo alerta</span>}
-          {ganga&&!(precio?.precio_alerta>0)&&<span className="text-[9px] font-bold text-blue-700 dark:text-blue-400 bg-blue-500/10 border border-blue-500/15 px-2 py-0.5 rounded-full">📉 ganga histórica</span>}
+          {ganga&&!(precio?.precio_alerta>0)&&<span className="text-[9px] font-bold text-blue-700 dark:text-blue-400 bg-blue-500/10 border border-blue-500/15 px-2 py-0.5 rounded-full">🔥 precio bajo</span>}
         </div>
 
         {expanded&&hist.length>1&&(
