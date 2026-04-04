@@ -315,9 +315,7 @@ async def main():
             mejor = r['mejores'][0] if r.get('mejores') else None
             fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else ""
             tipo_txt = " 🚀" if mejor and mejor['tipo'] == "DIR" else " 🛬" if mejor and mejor['tipo'] == "ESC" else ""
-            if es_ganga_manual:
-                ganga_txt = " <i>← GANGA</i>"
-            elif r.get('ganga_historica'):
+            if r.get('ganga_historica'):
                 ganga_txt = f" <i>← -{r['bajada_pct']}% histórico</i>"
             elif r.get('ganga_sesion'):
                 ganga_txt = " <i>← mercado actual</i>"
@@ -350,7 +348,8 @@ async def main():
             tendencia_txt = " · 📉 en bajada" if tendencia == 'bajando' else " · 📈 en subida" if tendencia == 'subiendo' else ""
             mensaje += (
                 f"🔥 <b>{ruta_l}</b>\n"
-                f"   💰 <b>${r['precio']} USD</b>{tipo_txt} · {fecha_txt}{tendencia_txt}\n"
+                f"   💰 <b>${r['precio']} USD</b>{tipo_txt}\n"
+                f"   📅 {fecha_txt}{tendencia_txt}\n"
                 f"   {referencia}\n"
                 f"   🔗 <a href=\"{url_l}\">Ver en Google Flights</a>\n"
                 f"─────────────────\n"
