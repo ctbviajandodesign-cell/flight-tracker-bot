@@ -7,6 +7,12 @@ export const metadata: Metadata = {
   description: "Dashboard de rastreo de vuelos por Marcka",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

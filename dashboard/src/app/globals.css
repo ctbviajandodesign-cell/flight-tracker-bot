@@ -56,12 +56,19 @@
   --color-error: var(--app-error);
 }
 
+html {
+  /* dvh = dynamic viewport height: excluye la chrome del browser en iOS Safari */
+  height: 100dvh;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background-color: var(--color-background);
   color: var(--color-on-background);
   overflow-x: hidden;
   max-width: 100vw;
+  /* Evita que el overscroll cambie el viewport en iOS */
+  overscroll-behavior: none;
 }
 
 /* Scrollbar sutil */

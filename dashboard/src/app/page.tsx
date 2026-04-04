@@ -520,7 +520,7 @@ export default function Dashboard() {
   const ultimaAct = Object.values(precios).sort((a,b)=>new Date(b.fecha).getTime()-new Date(a.fecha).getTime())[0]?.fecha;
 
   return (
-    <div className="min-h-screen bg-background text-on-background font-sans overflow-x-hidden">
+    <div className="min-h-dvh bg-background text-on-background font-sans overflow-x-hidden">
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl"/>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-tertiary/4 rounded-full blur-3xl"/>
