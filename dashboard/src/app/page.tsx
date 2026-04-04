@@ -562,18 +562,6 @@ export default function Dashboard() {
             <button onClick={()=>cargar()} className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:text-primary transition">
               <span className="material-symbols-outlined text-[18px]">refresh</span>
             </button>
-            {mounted&&(
-              <div className="hidden sm:flex bg-surface-container-low border border-outline-variant/20 rounded-xl p-0.5">
-                {(['light','dark','system'] as const).map(t=>(
-                  <button key={t} onClick={()=>setTheme(t)}
-                    className={`p-1.5 rounded-lg transition ${theme===t?'bg-primary/15 text-primary':'text-on-surface-variant hover:text-on-surface'}`}>
-                    <span className="material-symbols-outlined text-[15px]">
-                      {t==='light'?'light_mode':t==='dark'?'dark_mode':'desktop_windows'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
             <button onClick={()=>setMostrarForm(!mostrarForm)}
               className="flex items-center gap-1.5 bg-primary text-white font-bold px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm hover:bg-primary/90 transition shadow-md shadow-primary/20">
               <span className="material-symbols-outlined text-[16px] sm:text-[18px]">{mostrarForm?'close':'add'}</span>
@@ -678,7 +666,7 @@ export default function Dashboard() {
               <p className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">Resumen</p>
               <div className="flex justify-between text-xs"><span className="text-on-surface-variant">Rutas</span><span className="font-bold">{rutas.length}</span></div>
               <div className="flex justify-between text-xs"><span className="text-on-surface-variant">Gangas</span><span className="font-bold text-amber-700 dark:text-amber-400">{totalGangas}</span></div>
-              <div className="flex justify-between text-xs"><span className="text-on-surface-variant">Mostrando</span><span className="font-bold text-primary">{rutasFiltradas.length}</span></div>
+              {(filtroRegion||filtroOrigen||busqueda)&&<div className="flex justify-between text-xs"><span className="text-on-surface-variant">Mostrando</span><span className="font-bold text-primary">{rutasFiltradas.length}</span></div>}
             </div>
             <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-4">
               <p className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-3">Origen</p>
@@ -700,19 +688,36 @@ export default function Dashboard() {
                     ${!filtroRegion?'bg-primary/15 text-primary border border-primary/20':'text-on-surface-variant hover:bg-surface-container'}`}>
                   Todas
                 </button>
-                {Object.keys(REGIONES).map(r=>{
-                  const cnt=rutas.filter(ru=>REGIONES[r].includes(ru.destino)).length;
-                  return (
+                {(()=>{
+                  const assigned=Object.values(REGIONES).flat();
+                  const otrosCnt=rutas.filter(ru=>!assigned.includes(ru.destino)).length;
+                  const regs=[
+                    ...Object.keys(REGIONES).map(r=>({r,cnt:rutas.filter(ru=>REGIONES[r].includes(ru.destino)).length})).filter(x=>x.cnt>0),
+                    ...(otrosCnt>0?[{r:'🌐 Otros',cnt:otrosCnt}]:[]),
+                  ];
+                  return regs.map(({r,cnt})=>(
                     <button key={r} onClick={()=>setFiltroRegion(filtroRegion===r?null:r)}
                       className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition flex justify-between
                         ${filtroRegion===r?'bg-primary/15 text-primary border border-primary/20':'text-on-surface-variant hover:bg-surface-container'}`}>
                       <span>{r}</span>
                       <span className={`text-[10px] px-1.5 rounded-full ${filtroRegion===r?'bg-primary/20':'bg-surface-container'}`}>{cnt}</span>
                     </button>
-                  );
-                })}
+                  ));
+                })()}
               </div>
             </div>
+            {mounted&&(
+              <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-3 flex justify-center gap-1">
+                {(['light','dark','system'] as const).map(t=>(
+                  <button key={t} onClick={()=>setTheme(t)}
+                    className={`p-1.5 rounded-lg transition ${theme===t?'bg-primary/15 text-primary':'text-on-surface-variant hover:text-on-surface'}`}>
+                    <span className="material-symbols-outlined text-[14px]">
+                      {t==='light'?'light_mode':t==='dark'?'dark_mode':'desktop_windows'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             {(filtroRegion||filtroOrigen||busqueda)&&(
               <button onClick={()=>{setFiltroRegion(null);setFiltroOrigen(null);setBusqueda('');}}
                 className="w-full text-xs text-on-surface-variant hover:text-rose-400 transition py-2 border border-outline-variant/20 rounded-xl hover:border-rose-400/30">
@@ -745,13 +750,22 @@ export default function Dashboard() {
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Región</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {[{id:null,label:'🌐 Todas'},...Object.keys(REGIONES).map(r=>({id:r,label:r}))].map(r=>(
-                      <button key={String(r.id)} onClick={()=>setFiltroRegion(filtroRegion===r.id?null:r.id)}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-bold transition border text-left
-                          ${filtroRegion===r.id?'bg-primary text-white border-primary':'bg-surface-container text-on-surface-variant border-outline-variant/20'}`}>
-                        {r.label}
-                      </button>
-                    ))}
+                    {(()=>{
+                      const assigned=Object.values(REGIONES).flat();
+                      const otrosCnt=rutas.filter(ru=>!assigned.includes(ru.destino)).length;
+                      const regs:{id:string|null,label:string}[]=[{id:null,label:'🌐 Todas'}];
+                      Object.keys(REGIONES).forEach(r=>{
+                        if(rutas.some(ru=>REGIONES[r].includes(ru.destino)))regs.push({id:r,label:r});
+                      });
+                      if(otrosCnt>0)regs.push({id:'🌐 Otros',label:'🌐 Otros'});
+                      return regs.map(r=>(
+                        <button key={String(r.id)} onClick={()=>setFiltroRegion(filtroRegion===r.id?null:r.id)}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-bold transition border text-left
+                            ${filtroRegion===r.id?'bg-primary text-white border-primary':'bg-surface-container text-on-surface-variant border-outline-variant/20'}`}>
+                          {r.label}
+                        </button>
+                      ));
+                    })()}
                   </div>
                 </div>
                 {(filtroRegion||filtroOrigen||busqueda)&&(
