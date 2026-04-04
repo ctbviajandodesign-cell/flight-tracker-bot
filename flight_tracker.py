@@ -316,7 +316,7 @@ async def main():
             fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else ""
             tipo_txt = " 🚀" if mejor and mejor['tipo'] == "DIR" else " 🛬" if mejor and mejor['tipo'] == "ESC" else ""
             if r.get('ganga_historica'):
-                ganga_txt = f" <i>← -{r['bajada_pct']}% histórico</i>"
+                ganga_txt = f" <i>← -{r['bajada_pct']}% Hist.</i>"
             elif r.get('ganga_sesion'):
                 ganga_txt = " <i>← mercado actual</i>"
             else:
