@@ -27,6 +27,7 @@ async def guardar_en_supabase(resultados):
         es_ganga = bool(
             (r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual'])
             or r.get('ganga_historica', False)
+            or r.get('ganga_sesion', False)
         )
         datos.append({
             "ruta": r['ruta'],
@@ -135,14 +136,21 @@ async def analizar_gangas_historicas(resultados):
             bajada_pct = int((1 - r['precio'] / mediana_hist) * 100)
             if bajada_pct >= 15:
                 r['ganga_historica'] = True
+                r['ganga_sesion'] = False
                 r['mediana_historica'] = int(mediana_hist)
                 r['bajada_pct'] = bajada_pct
                 print(f"  📉 Ganga histórica detectada: {r['ruta']} — {bajada_pct}% bajo promedio")
             else:
                 r['ganga_historica'] = False
+                r['ganga_sesion'] = False
         else:
             r['ganga_historica'] = False
-            print(f"  ℹ️ {r['ruta']}: solo {len(historico)} registros (mínimo 30 para análisis histórico)")
+            if r.get('es_ganga_mat', False):
+                r['ganga_sesion'] = True
+                print(f"  📊 Ganga de mercado detectada: {r['ruta']} ({len(historico)} registros aún)")
+            else:
+                r['ganga_sesion'] = False
+                print(f"  ℹ️ {r['ruta']}: solo {len(historico)} registros, sin ganga de mercado")
 
 
 async def main():
@@ -208,11 +216,12 @@ async def main():
 
     await guardar_en_supabase(resultados)
 
-    # Criterio de ganga: alerta manual O bajada histórica >= 15%
+    # Criterio de ganga: alerta manual O bajada histórica >= 15% O ganga de mercado
     vuelos_ganga = [
         r for r in resultados
         if (r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual'])
         or r.get('ganga_historica', False)
+        or r.get('ganga_sesion', False)
     ]
 
     # Definir qué mostrar y con qué título
@@ -258,7 +267,7 @@ async def main():
         for r in vuelos_a_mostrar:
             ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
             es_ganga_manual = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
-            es_ganga = es_ganga_manual or r.get('ganga_historica', False)
+            es_ganga = es_ganga_manual or r.get('ganga_historica', False) or r.get('ganga_sesion', False)
             if es_ganga:
                 icono = "🔥🔥" if rachas.get(r['ruta'], 0) >= 2 else "🔥"
             else:
@@ -270,6 +279,8 @@ async def main():
                 ganga_txt = " <i>← GANGA</i>"
             elif r.get('ganga_historica'):
                 ganga_txt = f" <i>← -{r['bajada_pct']}% histórico</i>"
+            elif r.get('ganga_sesion'):
+                ganga_txt = " <i>← mercado actual</i>"
             else:
                 ganga_txt = ""
             linea = f"{icono} {ruta_l} — <b>${r['precio']}</b> USD{tipo_txt}{ganga_txt}"
@@ -289,8 +300,10 @@ async def main():
             es_ganga_manual = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
             if es_ganga_manual:
                 referencia = f"🎯 Alerta: ${r['alerta_manual']} | 📊 Prom: ${r['mediana']}"
-            else:
+            elif r.get('ganga_historica'):
                 referencia = f"📉 {r['bajada_pct']}% bajo promedio histórico (${r['mediana_historica']})"
+            else:
+                referencia = f"📊 20% bajo el precio de mercado actual"
             mensaje += (
                 f"🔥 <b>{ruta_l}</b>\n"
                 f"   💰 <b>${r['precio']} USD</b>{tipo_txt} · {fecha_txt}\n"
