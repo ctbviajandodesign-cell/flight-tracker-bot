@@ -8,6 +8,16 @@ on:
     - cron: '45 21 * * *'   # 4:45 PM Ecuador  → gangas
     - cron: '11 1 * * *'    # 8:11 PM Ecuador  → resumen
   workflow_dispatch:
+    inputs:
+      run_type:
+        description: 'Tipo de ejecución'
+        required: false
+        default: 'gangas'
+        type: choice
+        options:
+          - gangas
+          - general
+          - resumen
 
 jobs:
   track-flights:
@@ -30,11 +40,15 @@ jobs:
 
       - name: Determinar RUN_TYPE
         run: |
-          case "${{ github.event.schedule }}" in
-            "17 11 * * *"|"10 19 * * *") echo "RUN_TYPE=general" >> $GITHUB_ENV ;;
-            "11 1 * * *")                echo "RUN_TYPE=resumen" >> $GITHUB_ENV ;;
-            *)                           echo "RUN_TYPE=gangas"  >> $GITHUB_ENV ;;
-          esac
+          if [ -n "${{ github.event.inputs.run_type }}" ]; then
+            echo "RUN_TYPE=${{ github.event.inputs.run_type }}" >> $GITHUB_ENV
+          else
+            case "${{ github.event.schedule }}" in
+              "17 11 * * *"|"10 19 * * *") echo "RUN_TYPE=general" >> $GITHUB_ENV ;;
+              "11 1 * * *")                echo "RUN_TYPE=resumen" >> $GITHUB_ENV ;;
+              *)                           echo "RUN_TYPE=gangas"  >> $GITHUB_ENV ;;
+            esac
+          fi
 
       - name: Run Flight Tracker
         env:

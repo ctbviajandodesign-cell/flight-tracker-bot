@@ -75,7 +75,10 @@ def enviar_notificacion_telegram(mensaje_texto):
                 time.sleep(1.5)
                 continue
             else:
-                error_detail = resp.json().get('description', resp.text[:200])
+                try:
+                    error_detail = resp.json().get('description', resp.text[:200])
+                except Exception:
+                    error_detail = resp.text[:200]
                 print(f'⚠️ HTML falló ({resp.status_code}): {error_detail}')
         except Exception as e:
             print(f'⚠️ Excepción en intento HTML: {e}')

@@ -1,5 +1,5 @@
-requests
-python-dotenv
-playwright
-beautifulsoup4
-httpx
+requests>=2.31.0
+python-dotenv>=1.0.0
+playwright>=1.40.0
+beautifulsoup4>=4.12.0
+httpx>=0.25.0

@@ -10,6 +10,8 @@ from scraper_vuelos import procesar_rutas
 
 load_dotenv()
 
+ECUADOR_OFFSET = timedelta(hours=5)
+
 async def guardar_en_supabase(resultados):
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
@@ -33,10 +35,10 @@ async def guardar_en_supabase(resultados):
             "ruta": r['ruta'],
             "precio": r['precio'],
             "mediana": r.get('mediana_historica') or r.get('mediana', 0),
-            "fecha_vuelo": r['mejores'][0]['detalle'] if r.get('mejores') else "N/D",
+            "fecha_vuelo": r['mejores'][0]['detalle'] if r.get('mejores') and len(r['mejores']) > 0 else "N/D",
             "precio_alerta": r.get('alerta_manual', 0),
             "es_ganga": es_ganga,
-            "tipo_vuelo": r['mejores'][0]['tipo'] if r.get('mejores') and r['mejores'][0]['tipo'] else "N/D"
+            "tipo_vuelo": r['mejores'][0]['tipo'] if r.get('mejores') and len(r['mejores']) > 0 and r['mejores'][0]['tipo'] else "N/D"
         })
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -86,7 +88,7 @@ async def contar_gangas_hoy(ruta):
         return 0
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
     try:
-        today = (datetime.utcnow() - timedelta(hours=5)).strftime('%Y-%m-%d')  # hora Ecuador
+        today = (datetime.utcnow() - ECUADOR_OFFSET).strftime('%Y-%m-%d')  # hora Ecuador
         ruta_encoded = quote(ruta, safe='')
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
@@ -108,7 +110,7 @@ async def obtener_resumen_dia():
         return []
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
     try:
-        today = (datetime.utcnow() - timedelta(hours=5)).strftime('%Y-%m-%d')  # hora Ecuador
+        today = (datetime.utcnow() - ECUADOR_OFFSET).strftime('%Y-%m-%d')  # hora Ecuador
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(
                 f"{url}/rest/v1/vuelos_historial?es_ganga=eq.true&fecha=gte.{today}T00:00:00&order=precio.asc&select=ruta,precio,mediana,precio_alerta",
@@ -129,7 +131,7 @@ async def obtener_stats_dia():
         return 0, None
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
     try:
-        today = (datetime.utcnow() - timedelta(hours=5)).strftime('%Y-%m-%d')
+        today = (datetime.utcnow() - ECUADOR_OFFSET).strftime('%Y-%m-%d')
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(
                 f"{url}/rest/v1/vuelos_historial?fecha=gte.{today}T00:00:00&order=precio.asc&select=ruta,precio",
@@ -189,7 +191,7 @@ async def analizar_gangas_historicas(resultados):
 
 
 async def main():
-    ahora_ec = datetime.utcnow() - timedelta(hours=5)
+    ahora_ec = datetime.utcnow() - ECUADOR_OFFSET
     fecha_hora = ahora_ec.strftime('%d/%m/%Y')
 
     print("🚀 Iniciando rastreo inteligente...")
@@ -248,7 +250,11 @@ async def main():
         return
 
     if not resultados:
-        print("Sin resultados.")
+        enviar_notificacion_telegram(
+            f"⚠️ <b>Bot activo</b> — {fecha_hora}\n"
+            f"❌ El scraper no devolvió resultados.\n"
+            f"<i>Posible fallo en Google Flights o Google Sheets.</i>"
+        )
         return
 
     # Analizar gangas históricas antes de guardar (así es_ganga queda correcto en Supabase)
@@ -305,7 +311,7 @@ async def main():
             rachas = {r['ruta']: c for r, c in zip(vuelos_ganga, conteos)}
 
         for r in vuelos_a_mostrar:
-            ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
+            ruta_l = r['ruta'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             es_ganga_manual = r['alerta_manual'] > 0 and r['precio'] <= r['alerta_manual']
             es_ganga = es_ganga_manual or r.get('ganga_historica', False) or r.get('ganga_sesion', False)
             if es_ganga:
@@ -332,7 +338,7 @@ async def main():
     else:
         # ── ALERTA GANGAS ────────────────────────────────────
         for r in vuelos_a_mostrar:
-            ruta_l = r['ruta'].replace("<", "&lt;").replace(">", "&gt;")
+            ruta_l = r['ruta'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             url_l = r['url'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             mejor = r['mejores'][0] if r.get('mejores') else None
             fecha_txt = mejor['detalle'] if mejor and mejor['detalle'] != 'N/D' else "—"
