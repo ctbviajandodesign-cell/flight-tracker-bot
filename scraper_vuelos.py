@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 # Parche: aeropuertos que Google confunde por código corto
 _NOMBRES_AEROPUERTO = {
     "PEI": "Pereira Colombia",
-    "EZE": "Ezeiza Buenos Aires Argentina",
+    "EZE": "Aeropuerto Internacional Ministro Pistarini EZE Buenos Aires",
 }
 # Parche: cap de precio máximo por aeropuerto (origen o destino)
 _PRECIO_MAX_AEROPUERTO = {
