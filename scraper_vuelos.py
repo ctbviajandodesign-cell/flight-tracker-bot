@@ -4,10 +4,41 @@ import csv
 import re
 import statistics
 import requests
+from calendar import monthrange
 from datetime import datetime
 from io import StringIO
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
+
+def _normalizar_rango(inicio, fin):
+    """
+    Expande fechas sueltas a rango completo del mes.
+    Acepta YYYY-MM o YYYY-MM-DD. Si fin está vacío o igual al inicio,
+    cubre todo el mes de inicio. Devuelve (ini, fin) en YYYY-MM-DD.
+    """
+    inicio = (inicio or "").strip().replace("/", "-")
+    fin    = (fin    or "").strip().replace("/", "-")
+
+    def expandir(f, ultimo=False):
+        partes = f.split("-")
+        if len(partes) >= 2:
+            y, m = int(partes[0]), int(partes[1])
+            if len(partes) == 2:          # solo YYYY-MM → expandir
+                dia = monthrange(y, m)[1] if ultimo else 1
+                return f"{y:04d}-{m:02d}-{dia:02d}"
+        return f                           # ya tiene día completo
+
+    f_ini = expandir(inicio, ultimo=False)
+
+    if not fin or fin == inicio or fin == f_ini:
+        # Sin fin o igual → cubrir el mes completo del inicio
+        y, m = int(f_ini.split("-")[0]), int(f_ini.split("-")[1])
+        f_fin = f"{y:04d}-{m:02d}-{monthrange(y, m)[1]:02d}"
+    else:
+        f_fin = expandir(fin, ultimo=True)
+
+    return f_ini, f_fin
+
 
 # Parche: aeropuertos que Google confunde por código corto
 _NOMBRES_AEROPUERTO = {
@@ -21,6 +52,7 @@ _PRECIO_MAX_AEROPUERTO = {
 }
 
 async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
+    fecha_inicio, fecha_fin = _normalizar_rango(fecha_inicio, fecha_fin)
     origen_q  = _NOMBRES_AEROPUERTO.get(origen.upper(),  origen).replace(" ", "%20")
     destino_q = _NOMBRES_AEROPUERTO.get(destino.upper(), destino).replace(" ", "%20")
     precio_max = max(
