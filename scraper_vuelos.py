@@ -63,12 +63,7 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
     print(f"✈️ Analizando: {origen} -> {destino}")
     try:
         await page.goto(url, wait_until="commit", timeout=35000)
-        await page.wait_for_timeout(6000)
-        try:
-            await page.click('input[placeholder*="Salida"], [aria-label*="Salida"], .S9fT9c', timeout=7000)
-            await page.wait_for_timeout(3000)
-        except:
-            pass
+        await page.wait_for_timeout(4000)
 
         html = await page.content()
         soup = BeautifulSoup(html, 'html.parser')
@@ -191,7 +186,7 @@ async def procesar_una_ruta(browser, r, semaphore):
         try:
             res = await asyncio.wait_for(
                 extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
-                timeout=100
+                timeout=60
             )
             if res:
                 res["ruta"] = f"{r['origen']} -> {r['destino']}"
@@ -227,7 +222,7 @@ async def procesar_rutas():
     if not rutas_pendientes:
         return []
 
-    semaphore = asyncio.Semaphore(3)
+    semaphore = asyncio.Semaphore(5)
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
