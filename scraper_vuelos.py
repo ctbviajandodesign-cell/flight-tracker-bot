@@ -2,6 +2,7 @@ import asyncio
 import os
 import csv
 import re
+import random
 import statistics
 import requests
 from calendar import monthrange
@@ -9,6 +10,15 @@ from datetime import datetime
 from io import StringIO
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
+
+# Rotación de user-agents para evitar bloqueo de Google
+_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
+]
 
 def _normalizar_rango(inicio, fin):
     """
@@ -63,7 +73,12 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
     print(f"✈️ Analizando: {origen} -> {destino}")
     try:
         await page.goto(url, wait_until="commit", timeout=35000)
-        await page.wait_for_timeout(4000)
+        # Espera inteligente: espera a que Google termine sus requests AJAX (precios cargados)
+        # Si tarda más de 6s (Google sigue cargando cosas), continúa igual con 3s de fallback
+        try:
+            await page.wait_for_load_state("networkidle", timeout=6000)
+        except:
+            await page.wait_for_timeout(3000)
 
         html = await page.content()
         soup = BeautifulSoup(html, 'html.parser')
@@ -181,19 +196,28 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
 
 async def procesar_una_ruta(browser, r, semaphore):
     async with semaphore:
-        context = await browser.new_context()
+        ua = random.choice(_USER_AGENTS)
+        context = await browser.new_context(user_agent=ua)
         page = await context.new_page()
+        res = None
         try:
             res = await asyncio.wait_for(
                 extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
                 timeout=60
             )
+            # Retry automático si no encontró precios (página vacía o bloqueo de Google)
+            if res is None:
+                print(f"  🔄 Sin precios en intento 1 para {r['destino']}, reintentando...")
+                await page.wait_for_timeout(2000)
+                res = await asyncio.wait_for(
+                    extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
+                    timeout=45
+                )
             if res:
                 res["ruta"] = f"{r['origen']} -> {r['destino']}"
                 res["alerta_manual"] = r['alerta']
         except asyncio.TimeoutError:
             print(f"  🛑 Tiempo agotado para {r['destino']}")
-            res = None
         await context.close()
         return res
 
