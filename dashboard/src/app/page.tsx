@@ -10,10 +10,10 @@ import { es } from "date-fns/locale";
 const IATA_MAP: Record<string, string> = {
   GYE:"Guayaquil", UIO:"Quito", CUE:"Cuenca",
   BOG:"Bogotá", MDE:"Medellín", PTY:"Panamá",
-  MIA:"Miami", NYC:"Nueva York", MAD:"Madrid",
-  BCN:"Barcelona", LIM:"Lima", SCL:"Santiago",
+  MIA:"Miami", NYC:"Nueva York", JFK:"Nueva York", EWR:"Nueva York",
+  MAD:"Madrid", BCN:"Barcelona", LIM:"Lima", SCL:"Santiago",
   EZE:"Buenos Aires", MEX:"Ciudad de México",
-  CUN:"Cancún", MCO:"Orlando", LAX:"Los Ángeles",
+  CUN:"Cancún", MCO:"Orlando", LAX:"Los Ángeles", ORD:"Chicago", ATL:"Atlanta",
   GIG:"Río de Janeiro", CUR:"Curazao", PUJ:"Punta Cana",
   PEI:"Pereira", IST:"Estambul", ADZ:"San Andrés", CTG:"Cartagena",
 };
@@ -35,6 +35,10 @@ const AIRPORTS: {code:string; city:string; country:string; flag:string; region:s
   {code:"MCO", city:"Orlando",         country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
   {code:"LAX", city:"Los Ángeles",     country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
   {code:"NYC", city:"Nueva York",      country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
+  {code:"JFK", city:"Nueva York",      country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
+  {code:"EWR", city:"Nueva York",      country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
+  {code:"ORD", city:"Chicago",         country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
+  {code:"ATL", city:"Atlanta",         country:"USA",             flag:"🇺🇸", region:"🇺🇸 USA"},
   {code:"MAD", city:"Madrid",          country:"España",          flag:"🇪🇸", region:"🌍 Europa"},
   {code:"BCN", city:"Barcelona",       country:"España",          flag:"🇪🇸", region:"🌍 Europa"},
   {code:"IST", city:"Estambul",        country:"Turquía",         flag:"🇹🇷", region:"🌍 Europa"},
@@ -51,6 +55,19 @@ const toEC = (f: string) => new Date(new Date(f).getTime() - 5*3600000);
 const fmtEC = (f: string) => toEC(f).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 // Deriva la región directo del array AIRPORTS — si se agrega un aeropuerto con su region ya queda clasificado
 const getRegion = (d: string) => AIRPORTS.find(a=>a.code===d.toUpperCase())?.region ?? "🌐 Otros";
+
+// Formatea fecha de ruta en legible: "2025-11" → "Nov '25" | "2025-11-15" → "15 nov '25"
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const fmtRutaFecha = (s: string): string | null => {
+  if (!s) return null;
+  const p = s.split('-');
+  if (p.length >= 2) {
+    const m = parseInt(p[1]) - 1;
+    if (p.length === 2) return `${MESES[m]} '${p[0].slice(2)}`;
+    return `${parseInt(p[2])} ${MESES[m]} '${p[0].slice(2)}`;
+  }
+  return s;
+};
 
 type PrecioData = {
   id:number; ruta:string; precio:number; mediana:number;
@@ -273,15 +290,17 @@ function RutaCard({ruta,precio,hist,expanded,onExpand,onDelete,editing,editData,
         )}
 
         <div className="grid grid-cols-2 gap-1.5 mb-2">
-          {[{l:'Salida',k:'ida'},{l:'Retorno',k:'vuelta'}].map(f=>(
+          {([{l:'Salida',k:'ida'},{l:'Vuelta',k:'vuelta'}] as const).map(f=>(
             <div key={f.l} className="bg-surface-container rounded-lg px-2.5 py-1.5">
               <p className="text-[9px] uppercase tracking-wider text-on-surface-variant font-bold">{f.l}</p>
               {editing?(
                 <input value={val(f.k)} onChange={e=>onEditChange(f.k,e.target.value)}
-                  placeholder="2026-04"
+                  placeholder={f.k==='vuelta'?'vacío = todo el mes':'2026-04'}
                   className="w-full bg-transparent border-b border-primary/40 text-xs font-semibold outline-none py-0.5 focus:border-primary"/>
               ):(
-                <p className="text-xs font-semibold">{ruta[f.k]||'—'}</p>
+                f.k==='vuelta'&&!ruta.vuelta
+                  ? <span className="text-[10px] font-bold text-primary/60 bg-primary/8 rounded px-1 py-0.5">solo ida</span>
+                  : <p className="text-xs font-semibold">{fmtRutaFecha(ruta[f.k]) || '—'}</p>
               )}
             </div>
           ))}
@@ -422,6 +441,7 @@ export default function Dashboard() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [nuevoVuelo, setNuevoVuelo] = useState({origen:'',destino:'',ida:'',vuelta:'',alerta:'',dias_paquete:'',pais_destino:''});
   const [tipoFecha, setTipoFecha] = useState<'mes'|'exacta'>('mes');
+  const [soloIda, setSoloIda] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -481,6 +501,7 @@ export default function Dashboard() {
       dias_paquete:nuevoVuelo.dias_paquete?Number(nuevoVuelo.dias_paquete):''};
     setRutas([...rutas,nueva]);
     setMostrarForm(false);
+    setSoloIda(false);
     setNuevoVuelo({origen:'',destino:'',ida:'',vuelta:'',alerta:'',dias_paquete:'',pais_destino:''});
     await fetch('/api/flights',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(nueva)});
     cargar();
@@ -626,15 +647,24 @@ export default function Dashboard() {
         <div className="border-b border-outline-variant/15 bg-surface-container-low">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4">
             <form onSubmit={agregar}>
-              {/* Toggle mes / día exacto */}
-              <div className="flex gap-1 bg-surface-container border border-outline-variant/20 rounded-xl p-1 w-fit mb-3">
-                <button type="button" onClick={()=>setTipoFecha('mes')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoFecha==='mes'?'bg-primary text-white':'text-on-surface-variant hover:text-on-surface'}`}>
-                  📅 Mes entero
-                </button>
-                <button type="button" onClick={()=>setTipoFecha('exacta')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoFecha==='exacta'?'bg-primary text-white':'text-on-surface-variant hover:text-on-surface'}`}>
-                  🗓️ Día exacto
+              {/* Toggles: tipo de fecha + solo ida */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex gap-1 bg-surface-container border border-outline-variant/20 rounded-xl p-1">
+                  <button type="button" onClick={()=>setTipoFecha('mes')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoFecha==='mes'?'bg-primary text-white':'text-on-surface-variant hover:text-on-surface'}`}>
+                    📅 Mes entero
+                  </button>
+                  <button type="button" onClick={()=>setTipoFecha('exacta')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoFecha==='exacta'?'bg-primary text-white':'text-on-surface-variant hover:text-on-surface'}`}>
+                    🗓️ Día exacto
+                  </button>
+                </div>
+                <button type="button"
+                  onClick={()=>{setSoloIda(!soloIda);if(!soloIda)setNuevoVuelo(v=>({...v,vuelta:''}));}}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition
+                    ${soloIda?'bg-primary/10 text-primary border-primary/30':'bg-surface-container border-outline-variant/20 text-on-surface-variant hover:text-on-surface'}`}>
+                  <span className="material-symbols-outlined text-[13px]">{soloIda?'check_box':'check_box_outline_blank'}</span>
+                  Solo ida
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
@@ -654,22 +684,39 @@ export default function Dashboard() {
                 </div>
                 <PaisInput value={nuevoVuelo.pais_destino}
                   onChange={v=>setNuevoVuelo({...nuevoVuelo,pais_destino:v})}/>
-                {(['ida','vuelta'] as const).map(k=>(
-                  <div key={k}>
-                    <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">
-                      {k==='ida'?'Fecha ida':'Fecha vuelta'}
-                    </label>
+                <div>
+                  <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">Fecha ida</label>
+                  <DatePicker
+                    selected={parseFecha(nuevoVuelo.ida)}
+                    onChange={(d:Date|null)=>setNuevoVuelo({...nuevoVuelo,ida:fmtFecha(d,tipoFecha)})}
+                    dateFormat={tipoFecha==='mes'?'MM/yyyy':'dd/MM/yyyy'}
+                    showMonthYearPicker={tipoFecha==='mes'}
+                    locale={es}
+                    wrapperClassName="w-full"
+                    placeholderText={tipoFecha==='mes'?'MM/YYYY':'DD/MM/YYYY'}
+                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-2.5 py-2 text-xs outline-none focus:border-primary h-[38px]"/>
+                </div>
+                <div>
+                  <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">
+                    Vuelta <span className="normal-case text-[8px] font-normal opacity-50">(opcional)</span>
+                  </label>
+                  {soloIda?(
+                    <div className="w-full h-[38px] bg-surface-container/50 border border-dashed border-outline-variant/20 rounded-lg flex items-center justify-center">
+                      <span className="text-[10px] text-on-surface-variant/40">solo ida</span>
+                    </div>
+                  ):(
                     <DatePicker
-                      selected={parseFecha((nuevoVuelo as any)[k])}
-                      onChange={(d:Date|null)=>setNuevoVuelo({...nuevoVuelo,[k]:fmtFecha(d,tipoFecha)})}
+                      selected={parseFecha(nuevoVuelo.vuelta)}
+                      onChange={(d:Date|null)=>setNuevoVuelo({...nuevoVuelo,vuelta:fmtFecha(d,tipoFecha)})}
                       dateFormat={tipoFecha==='mes'?'MM/yyyy':'dd/MM/yyyy'}
                       showMonthYearPicker={tipoFecha==='mes'}
                       locale={es}
                       wrapperClassName="w-full"
-                      placeholderText={tipoFecha==='mes'?'MM/YYYY':'DD/MM/YYYY'}
+                      placeholderText={tipoFecha==='mes'?'vacío = todo el mes':'vacío = mismo mes'}
+                      isClearable
                       className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-2.5 py-2 text-xs outline-none focus:border-primary h-[38px]"/>
-                  </div>
-                ))}
+                  )}
+                </div>
                 <div>
                   <label className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold block mb-1">Días</label>
                   <input value={nuevoVuelo.dias_paquete} onChange={e=>setNuevoVuelo({...nuevoVuelo,dias_paquete:e.target.value})}
