@@ -196,8 +196,6 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
 
 async def procesar_una_ruta(browser, r, semaphore):
     async with semaphore:
-        # Delay aleatorio antes de cada request para evitar detección de Google
-        await asyncio.sleep(random.uniform(2, 6))
         ua = random.choice(_USER_AGENTS)
         context = await browser.new_context(user_agent=ua)
         page = await context.new_page()
@@ -210,7 +208,7 @@ async def procesar_una_ruta(browser, r, semaphore):
             # Retry automático si no encontró precios (página vacía o bloqueo de Google)
             if res is None:
                 print(f"  🔄 Sin precios en intento 1 para {r['destino']}, reintentando...")
-                await asyncio.sleep(random.uniform(4, 8))
+                await page.wait_for_timeout(3000)
                 res = await asyncio.wait_for(
                     extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
                     timeout=60
