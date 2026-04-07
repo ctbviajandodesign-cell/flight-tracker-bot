@@ -241,7 +241,7 @@ async def main():
         return
 
     try:
-        resultados = await asyncio.wait_for(procesar_rutas(), timeout=2400)
+        resultados, total_rutas = await asyncio.wait_for(procesar_rutas(), timeout=2400)
     except asyncio.TimeoutError:
         print("❌ Tiempo excedido (40 min).")
         enviar_notificacion_telegram(
@@ -259,10 +259,13 @@ async def main():
         )
         return
 
+    fallidas = total_rutas - len(resultados)
+    alerta_fallas = f"\n⚠️ <i>{fallidas} rutas sin datos (Google las bloqueó)</i>" if fallidas > 0 else ""
+
     if not resultados:
         enviar_notificacion_telegram(
             f"⚠️ <b>Bot activo</b> — {fecha_hora}\n"
-            f"❌ El scraper no devolvió resultados.\n"
+            f"❌ El scraper no devolvió resultados ({total_rutas} rutas intentadas).\n"
             f"<i>Posible fallo en Google Flights o Google Sheets.</i>"
         )
         return
@@ -284,26 +287,26 @@ async def main():
     if es_reporte_diario and vuelos_ganga:
         titulo = (
             f"🌐 <b>REPORTE DIARIO</b> — {fecha_hora}\n"
-            f"🚨 <b>{len(vuelos_ganga)} gangas detectadas</b> de {len(resultados)} rutas\n\n"
+            f"🚨 <b>{len(vuelos_ganga)} gangas detectadas</b> de {len(resultados)}/{total_rutas} rutas{alerta_fallas}\n\n"
         )
         vuelos_a_mostrar = resultados
     elif es_reporte_diario:
         titulo = (
             f"🌐 <b>REPORTE DIARIO</b> — {fecha_hora}\n"
-            f"📊 {len(resultados)} rutas analizadas — sin gangas por ahora\n\n"
+            f"📊 {len(resultados)}/{total_rutas} rutas analizadas — sin gangas por ahora{alerta_fallas}\n\n"
         )
         vuelos_a_mostrar = resultados
     elif vuelos_ganga:
         titulo = (
             f"🚨 <b>ALERTA DE GANGAS</b> — {fecha_hora}\n"
-            f"🔥 <b>{len(vuelos_ganga)} oportunidades detectadas</b>\n\n"
+            f"🔥 <b>{len(vuelos_ganga)} oportunidades detectadas</b>{alerta_fallas}\n\n"
         )
         vuelos_a_mostrar = vuelos_ganga
     else:
         mensaje_vacio = (
             f"✅ <b>Bot activo</b> — {fecha_hora}\n"
-            f"📊 {len(resultados)} rutas analizadas\n"
-            f"💤 Sin gangas en este momento\n"
+            f"📊 {len(resultados)}/{total_rutas} rutas analizadas\n"
+            f"💤 Sin gangas en este momento{alerta_fallas}\n"
             f"<i>Próxima consulta en horario programado</i>"
         )
         enviar_notificacion_telegram(mensaje_vacio)

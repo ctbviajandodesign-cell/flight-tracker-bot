@@ -76,9 +76,9 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
         # Espera inteligente: espera a que Google termine sus requests AJAX (precios cargados)
         # Si tarda más de 6s (Google sigue cargando cosas), continúa igual con 3s de fallback
         try:
-            await page.wait_for_load_state("networkidle", timeout=6000)
+            await page.wait_for_load_state("networkidle", timeout=8000)
         except:
-            await page.wait_for_timeout(3000)
+            await page.wait_for_timeout(5000)
 
         html = await page.content()
         soup = BeautifulSoup(html, 'html.parser')
@@ -196,6 +196,8 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
 
 async def procesar_una_ruta(browser, r, semaphore):
     async with semaphore:
+        # Delay aleatorio antes de cada request para evitar detección de Google
+        await asyncio.sleep(random.uniform(2, 6))
         ua = random.choice(_USER_AGENTS)
         context = await browser.new_context(user_agent=ua)
         page = await context.new_page()
@@ -203,15 +205,15 @@ async def procesar_una_ruta(browser, r, semaphore):
         try:
             res = await asyncio.wait_for(
                 extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
-                timeout=60
+                timeout=75
             )
             # Retry automático si no encontró precios (página vacía o bloqueo de Google)
             if res is None:
                 print(f"  🔄 Sin precios en intento 1 para {r['destino']}, reintentando...")
-                await page.wait_for_timeout(2000)
+                await asyncio.sleep(random.uniform(4, 8))
                 res = await asyncio.wait_for(
                     extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
-                    timeout=45
+                    timeout=60
                 )
             if res:
                 res["ruta"] = f"{r['origen']} -> {r['destino']}"
@@ -241,19 +243,24 @@ async def procesar_rutas():
                 })
     except Exception as e:
         print(f"❌ Error cargando rutas: {e}")
-        return []
+        return [], 0
 
     if not rutas_pendientes:
-        return []
+        return [], 0
 
-    semaphore = asyncio.Semaphore(5)
+    # Semáforo en 3 para no saturar Google con requests simultáneas
+    semaphore = asyncio.Semaphore(3)
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         tasks = [procesar_una_ruta(browser, r, semaphore) for r in rutas_pendientes]
         respuestas = await asyncio.gather(*tasks, return_exceptions=True)
         await browser.close()
-        return [r for r in respuestas if r and not isinstance(r, Exception)]
+
+        exitosas = [r for r in respuestas if r and not isinstance(r, Exception)]
+        fallidas = len(rutas_pendientes) - len(exitosas)
+        print(f"📊 Rutas procesadas: {len(exitosas)} exitosas, {fallidas} sin precios de {len(rutas_pendientes)} totales")
+        return exitosas, len(rutas_pendientes)
 
 if __name__ == "__main__":
     asyncio.run(procesar_rutas())
