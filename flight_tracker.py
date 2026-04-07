@@ -244,9 +244,19 @@ async def main():
         resultados = await asyncio.wait_for(procesar_rutas(), timeout=2400)
     except asyncio.TimeoutError:
         print("❌ Tiempo excedido (40 min).")
+        enviar_notificacion_telegram(
+            f"⛔ <b>Error crítico</b> — {fecha_hora}\n"
+            f"⏱️ El scraper excedió el tiempo límite (40 min).\n"
+            f"<i>Revisa GitHub Actions para más detalles.</i>"
+        )
         return
     except Exception as e:
         print(f"❌ Error inesperado: {e}")
+        enviar_notificacion_telegram(
+            f"⛔ <b>Error crítico</b> — {fecha_hora}\n"
+            f"💥 <code>{str(e)[:300]}</code>\n"
+            f"<i>Revisa GitHub Actions para más detalles.</i>"
+        )
         return
 
     if not resultados:

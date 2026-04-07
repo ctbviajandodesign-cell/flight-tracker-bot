@@ -251,9 +251,9 @@ async def procesar_rutas():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         tasks = [procesar_una_ruta(browser, r, semaphore) for r in rutas_pendientes]
-        respuestas = await asyncio.gather(*tasks)
+        respuestas = await asyncio.gather(*tasks, return_exceptions=True)
         await browser.close()
-        return [r for r in respuestas if r]
+        return [r for r in respuestas if r and not isinstance(r, Exception)]
 
 if __name__ == "__main__":
     asyncio.run(procesar_rutas())
