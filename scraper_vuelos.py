@@ -126,15 +126,22 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
         for e in elementos:
             label = e.get('aria-label', '').lower()
 
+            # Detectar precio en español E inglés (Google a veces ignora &hl=es-419)
             tiene_precio = any(x in label for x in [
-                'dólar', 'dolar', 'dólares', 'usd', '$', 'dólares estadounidenses'
+                'dólar', 'dolar', 'dólares', 'usd', '$',
+                'dollar', 'dollars', 'us dollar', 'us dollars'
             ])
             if not tiene_precio:
                 continue
 
-            match = re.search(r'(\d[\d,\.]*)\s*(?:dólar|dolar|dólares|usd)', label)
+            # Español: "234 dólares" / "usd 234"
+            match = re.search(r'(\d[\d,\.]*)\s*(?:dólar|dolar|dólares|usd|dollars?)', label)
             if not match:
+                # Inglés: "us$234" / "$234" / "234 us dollars"
                 match = re.search(r'(?:us\$|\$)\s*(\d[\d,\.]*)', label)
+            if not match:
+                # Inglés alternativo: "234 dollars" / "234 us dollars"
+                match = re.search(r'(\d[\d,\.]*)\s+(?:us\s+)?dollars?', label)
             if not match:
                 continue
 
@@ -149,10 +156,10 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
             if precio_max > 0 and precio > precio_max:
                 continue
 
-            # Tipo: solo marcar si hay certeza, sino dejar vacío
-            if any(x in label for x in ["sin escala", "sin escalas", "directo", "nonstop", "vuelo directo"]):
+            # Tipo: español e inglés
+            if any(x in label for x in ["sin escala", "sin escalas", "directo", "nonstop", "vuelo directo", "non-stop"]):
                 tipo = "DIR"
-            elif any(x in label for x in ["escala", "escalas", "parada", "conexión", "con escala"]):
+            elif any(x in label for x in ["escala", "escalas", "parada", "conexión", "con escala", "stop", "layover"]):
                 tipo = "ESC"
             else:
                 tipo = ""
@@ -184,7 +191,7 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
             precios_validos.append((precio, fecha_corta, tipo))
 
         if not precios_validos:
-            print(f"  ❌ Sin precios para {destino}")
+            print(f"  ❌ Sin precios para {destino} (aria-labels encontrados: {len(elementos)})")
             return None
 
         precios_validos.sort(key=lambda x: x[0])
