@@ -194,32 +194,47 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
     return None
 
 
-async def procesar_una_ruta(browser, r, semaphore):
-    async with semaphore:
-        ua = random.choice(_USER_AGENTS)
-        context = await browser.new_context(user_agent=ua)
-        page = await context.new_page()
-        res = None
-        try:
-            res = await asyncio.wait_for(
-                extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
-                timeout=75
-            )
-            # Retry automático si no encontró precios (página vacía o bloqueo de Google)
-            if res is None:
-                print(f"  🔄 Sin precios en intento 1 para {r['destino']}, reintentando...")
-                await page.wait_for_timeout(3000)
-                res = await asyncio.wait_for(
-                    extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
-                    timeout=60
-                )
-            if res:
-                res["ruta"] = f"{r['origen']} -> {r['destino']}"
-                res["alerta_manual"] = r['alerta']
-        except asyncio.TimeoutError:
-            print(f"  🛑 Tiempo agotado para {r['destino']}")
+async def _crear_contexto_stealth(browser):
+    """Crea un contexto de navegador con técnicas anti-detección."""
+    ua = random.choice(_USER_AGENTS)
+    context = await browser.new_context(
+        user_agent=ua,
+        viewport={"width": 1920, "height": 1080},
+        locale="es-419",
+        extra_http_headers={
+            "Accept-Language": "es-419,es;q=0.9,en;q=0.8",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        },
+    )
+    # Ocultar firma de automatización que Google detecta
+    await context.add_init_script("""
+        Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+        Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+        Object.defineProperty(navigator, 'languages', {get: () => ['es-419', 'es', 'en']});
+        window.chrome = {runtime: {}};
+        delete window.__playwright;
+        delete window.__pwInitScripts;
+    """)
+    return context
+
+
+async def procesar_una_ruta(browser, r):
+    context = await _crear_contexto_stealth(browser)
+    page = await context.new_page()
+    res = None
+    try:
+        res = await asyncio.wait_for(
+            extrar_mejor_precio(page, r["origen"], r["destino"], r["inicio"], r["fin"]),
+            timeout=90
+        )
+        if res:
+            res["ruta"] = f"{r['origen']} -> {r['destino']}"
+            res["alerta_manual"] = r['alerta']
+    except asyncio.TimeoutError:
+        print(f"  🛑 Tiempo agotado para {r['destino']}")
+    finally:
         await context.close()
-        return res
+    return res
 
 
 async def procesar_rutas():
@@ -246,16 +261,31 @@ async def procesar_rutas():
     if not rutas_pendientes:
         return [], 0
 
-    # Semáforo en 3 para no saturar Google con requests simultáneas
-    semaphore = asyncio.Semaphore(3)
+    print(f"📋 {len(rutas_pendientes)} rutas — procesando una a la vez para evitar bloqueo de Google")
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        tasks = [procesar_una_ruta(browser, r, semaphore) for r in rutas_pendientes]
-        respuestas = await asyncio.gather(*tasks, return_exceptions=True)
+        # Headless nuevo modo: menos detectable que el clásico
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--headless=new",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-blink-features=AutomationControlled",
+            ],
+        )
+        exitosas = []
+        for i, r in enumerate(rutas_pendientes):
+            res = await procesar_una_ruta(browser, r)
+            if res:
+                exitosas.append(res)
+            # Delay entre rutas (excepto después de la última) para no triggear rate-limiting
+            if i < len(rutas_pendientes) - 1:
+                delay = random.randint(20, 38)
+                print(f"  ⏳ Esperando {delay}s antes de la siguiente ruta...")
+                await asyncio.sleep(delay)
         await browser.close()
 
-        exitosas = [r for r in respuestas if r and not isinstance(r, Exception)]
         fallidas = len(rutas_pendientes) - len(exitosas)
         print(f"📊 Rutas procesadas: {len(exitosas)} exitosas, {fallidas} sin precios de {len(rutas_pendientes)} totales")
         return exitosas, len(rutas_pendientes)
