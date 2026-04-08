@@ -245,15 +245,20 @@ async def procesar_rutas():
         f = StringIO(response.text)
         reader = csv.DictReader(f)
         for row in reader:
-            if row.get("ORIGEN") and row.get("DESTINO"):
-                rutas_pendientes.append({
-                    "origen": row["ORIGEN"],
-                    "destino": row["DESTINO"],
-                    "inicio": row["MES DE INICIO"].replace("/", "-"),
-                    "fin": row["MES DE FIN"].replace("/", "-"),
-                    "alerta": int(str(row.get("Precio_Alerta") or row.get("PRECIO ALERTA") or "0").strip() or "0"),
-                    "pais_destino": row.get("PAIS_DESTINO", "")
-                })
+            origen  = (row.get("ORIGEN")  or "").strip()
+            destino = (row.get("DESTINO") or "").strip()
+            inicio  = (row.get("MES DE INICIO") or "").strip().replace("/", "-")
+            if not origen or not destino or not inicio:
+                # Sin origen, destino o mes de inicio → fila incompleta, se salta
+                continue
+            rutas_pendientes.append({
+                "origen": origen,
+                "destino": destino,
+                "inicio": inicio,
+                "fin": (row.get("MES DE FIN") or "").strip().replace("/", "-"),
+                "alerta": int(str(row.get("Precio_Alerta") or row.get("PRECIO ALERTA") or "0").strip() or "0"),
+                "pais_destino": row.get("PAIS_DESTINO", "")
+            })
     except Exception as e:
         print(f"❌ Error cargando rutas: {e}")
         return [], 0
