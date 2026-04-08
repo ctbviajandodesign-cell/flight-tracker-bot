@@ -285,13 +285,7 @@ async def main():
         )
         vuelos_a_mostrar = vuelos_ganga
     else:
-        mensaje_vacio = (
-            f"✅ <b>Bot activo</b> — {fecha_hora}\n"
-            f"📊 {len(resultados)}/{total_rutas} rutas analizadas\n"
-            f"💤 Sin gangas en este momento\n"
-            f"<i>Próxima consulta en horario programado</i>"
-        )
-        enviar_notificacion_telegram(mensaje_vacio)
+        # Sin gangas → silencio total, no molestar
         return
 
     mensaje = titulo
