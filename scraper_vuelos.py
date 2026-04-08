@@ -280,8 +280,9 @@ async def procesar_rutas():
             if res:
                 exitosas.append(res)
             # Delay entre rutas (excepto después de la última) para no triggear rate-limiting
+            # 10-18s es suficiente: el stealth oculta la firma de bot, el delay solo evita rate-limit
             if i < len(rutas_pendientes) - 1:
-                delay = random.randint(20, 38)
+                delay = random.randint(10, 18)
                 print(f"  ⏳ Esperando {delay}s antes de la siguiente ruta...")
                 await asyncio.sleep(delay)
         await browser.close()

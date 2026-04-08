@@ -241,9 +241,9 @@ async def main():
         return
 
     try:
-        resultados, total_rutas = await asyncio.wait_for(procesar_rutas(), timeout=2400)
+        resultados, total_rutas = await asyncio.wait_for(procesar_rutas(), timeout=3000)
     except asyncio.TimeoutError:
-        print("❌ Tiempo excedido (40 min).")
+        print("❌ Tiempo excedido (50 min).")
         enviar_notificacion_telegram(
             f"⛔ <b>Error crítico</b> — {fecha_hora}\n"
             f"⏱️ El scraper excedió el tiempo límite (40 min).\n"
