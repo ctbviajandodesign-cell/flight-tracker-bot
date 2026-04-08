@@ -6,7 +6,7 @@ import random
 import statistics
 import requests
 from calendar import monthrange
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from io import StringIO
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
@@ -22,9 +22,10 @@ _USER_AGENTS = [
 
 def _normalizar_rango(inicio, fin):
     """
-    Expande fechas sueltas a rango completo del mes.
-    Acepta YYYY-MM o YYYY-MM-DD. Si fin está vacío o igual al inicio,
-    cubre todo el mes de inicio. Devuelve (ini, fin) en YYYY-MM-DD.
+    Expande fechas sueltas a rango válido para Google Flights.
+    - Si el inicio está en el pasado, lo mueve a hoy.
+    - Capeamos el rango a 45 días (Google calendar view óptimo).
+    - Si el rango completo ya pasó, devuelve (None, None) → la ruta se salta.
     """
     inicio = (inicio or "").strip().replace("/", "-")
     fin    = (fin    or "").strip().replace("/", "-")
@@ -33,19 +34,34 @@ def _normalizar_rango(inicio, fin):
         partes = f.split("-")
         if len(partes) >= 2:
             y, m = int(partes[0]), int(partes[1])
-            if len(partes) == 2:          # solo YYYY-MM → expandir
+            if len(partes) == 2:
                 dia = monthrange(y, m)[1] if ultimo else 1
                 return f"{y:04d}-{m:02d}-{dia:02d}"
-        return f                           # ya tiene día completo
+        return f
 
     f_ini = expandir(inicio, ultimo=False)
 
     if not fin or fin == inicio or fin == f_ini:
-        # Sin fin o igual → cubrir el mes completo del inicio
         y, m = int(f_ini.split("-")[0]), int(f_ini.split("-")[1])
         f_fin = f"{y:04d}-{m:02d}-{monthrange(y, m)[1]:02d}"
     else:
         f_fin = expandir(fin, ultimo=True)
+
+    hoy = date.today()
+
+    # Si el rango completo ya pasó → no tiene sentido buscarlo
+    if date.fromisoformat(f_fin) < hoy:
+        return None, None
+
+    # Si el inicio está en el pasado → mover a hoy
+    if date.fromisoformat(f_ini) < hoy:
+        f_ini = hoy.isoformat()
+
+    # Capear a 45 días desde el inicio para que Google muestre el calendario correctamente
+    ini_date = date.fromisoformat(f_ini)
+    fin_date = date.fromisoformat(f_fin)
+    if (fin_date - ini_date).days > 45:
+        f_fin = (ini_date + timedelta(days=45)).isoformat()
 
     return f_ini, f_fin
 
@@ -63,6 +79,9 @@ _PRECIO_MAX_AEROPUERTO = {
 
 async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
     fecha_inicio, fecha_fin = _normalizar_rango(fecha_inicio, fecha_fin)
+    if fecha_inicio is None:
+        print(f"  ⏭️ {origen}->{destino}: rango de fechas ya pasó, saltando.")
+        return None
     origen_q  = _NOMBRES_AEROPUERTO.get(origen.upper(),  origen).replace(" ", "%20")
     destino_q = _NOMBRES_AEROPUERTO.get(destino.upper(), destino).replace(" ", "%20")
     precio_max = max(
@@ -70,7 +89,7 @@ async def extrar_mejor_precio(page, origen, destino, fecha_inicio, fecha_fin):
         _PRECIO_MAX_AEROPUERTO.get(destino.upper(), 0),
     )
     url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destino_q}%20from%20{origen_q}%20on%20{fecha_inicio}%20through%20{fecha_fin}&hl=es-419"
-    print(f"✈️ Analizando: {origen} -> {destino}")
+    print(f"✈️ Analizando: {origen} -> {destino} ({fecha_inicio} → {fecha_fin})")
     try:
         await page.goto(url, wait_until="commit", timeout=35000)
         # Espera inteligente: espera a que Google termine sus requests AJAX (precios cargados)
