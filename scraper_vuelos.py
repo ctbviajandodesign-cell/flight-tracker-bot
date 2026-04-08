@@ -241,7 +241,13 @@ async def procesar_rutas():
     rutas_pendientes = []
     try:
         url_csv = os.getenv("GOOGLE_SHEETS_URL", "")
+        if not url_csv:
+            print("❌ GOOGLE_SHEETS_URL no configurado.")
+            return [], 0
         response = requests.get(url_csv, timeout=15)
+        if response.status_code != 200:
+            print(f"❌ Google Sheets devolvió HTTP {response.status_code}. Verifica el link.")
+            return [], 0
         f = StringIO(response.text)
         reader = csv.DictReader(f)
         for row in reader:

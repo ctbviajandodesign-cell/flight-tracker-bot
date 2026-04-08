@@ -249,9 +249,6 @@ async def main():
         print(f"❌ Error inesperado: {e}")
         return
 
-    fallidas = total_rutas - len(resultados)
-    alerta_fallas = ""
-
     if not resultados:
         return
 
